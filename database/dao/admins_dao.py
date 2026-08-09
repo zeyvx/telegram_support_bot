@@ -25,3 +25,17 @@ async def take_request(request_id, admin_id):
         cursor = await conn.execute("UPDATE requests SET admin_id = ?, status = 'В работе' WHERE id = ? AND status = 'Новая'", (admin_id, request_id))
         await conn.commit()
         return cursor.rowcount > 0
+
+async def complete_request(request_id, admin_id):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute("UPDATE requests SET status = 'Завершена' WHERE id = ? AND status = 'В работе' AND admin_id = ?", (request_id, admin_id))
+        await conn.commit()
+        return cursor.rowcount > 0
+
+async def get_request_by_id(request_id):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute("SELECT * FROM requests WHERE id = ?", (request_id,))
+        request = await cursor.fetchone()
+        return request
+        
+    
