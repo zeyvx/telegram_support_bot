@@ -180,7 +180,7 @@ async def statistic(callback: CallbackQuery):
 
     total = sum(stats.values())
 
-    text = text = (
+    text = (
     f"📊 Статистика заявок\n\n"
     f"Всего заявок: {total}\n\n"
     f"🆕 Новые: {new_count}\n"
@@ -188,5 +188,5 @@ async def statistic(callback: CallbackQuery):
     f"✅ Завершено: {completed}"
 )
 
-    await callback.message.edit_text(text=text)
+    await callback.message.edit_text(text=text, reply_markup=admin.start_menu())
     await callback.answer()
