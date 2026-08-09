@@ -169,3 +169,24 @@ async def all_request_page(callback: CallbackQuery):
     )
 
     await callback.answer()
+
+
+@router.callback_query(F.data == 'statistic')
+async def statistic(callback: CallbackQuery):
+    stats = dict(await admins_dao.get_statistics())
+    new_count = stats.get('Новая', 0)
+    in_progress = stats.get('В работе', 0)
+    completed = stats.get('Завершена', 0)
+
+    total = sum(stats.values())
+
+    text = text = (
+    f"📊 Статистика заявок\n\n"
+    f"Всего заявок: {total}\n\n"
+    f"🆕 Новые: {new_count}\n"
+    f"🔧 В работе: {in_progress}\n"
+    f"✅ Завершено: {completed}"
+)
+
+    await callback.message.edit_text(text=text)
+    await callback.answer()

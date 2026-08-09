@@ -43,3 +43,9 @@ async def return_request(request_id, admin_id):
         cursor = await conn.execute("UPDATE requests SET status = 'Новая', admin_id = NULL WHERE id = ? AND admin_id = ? AND status = 'В работе'", (request_id, admin_id))
         await conn.commit()
         return cursor.rowcount > 0
+
+
+async def get_statistics():
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute("SELECT status, COUNT(*) FROM requests GROUP BY status")
+        return await cursor.fetchall()
