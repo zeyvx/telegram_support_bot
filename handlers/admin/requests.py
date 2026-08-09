@@ -45,5 +45,16 @@ async def open_request(callback: CallbackQuery):
     await callback.message.edit_text(text=format_text(request), reply_markup=request_actions_keyboard(request_id))
     await callback.answer()
 
+@router.callback_query(F.data.startswith('return_request:'))
+async def return_request(callback: CallbackQuery):
+    request_id = int(callback.data.split(':')[1])
 
-    
+    success = await admins_dao.return_request(request_id, callback.from_user.id)
+
+    if not success:
+        await callback.answer("Не удалось вернуть заявку в очередь", show_alert=True)
+        return
+
+    await callback.message.edit_text("Заявка возвращена в очередь", reply_markup=start_menu())
+    await callback.answer()
+

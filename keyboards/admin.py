@@ -27,4 +27,6 @@ def my_works_list_keyboard(requests):
         builder.button(text=str(i + 1), callback_data=f"open_request:{request[0]}")
 
     builder.adjust(3)
+
+    builder.row(InlineKeyboardButton(text='В меню', callback_data='back_to_menu'))
     return builder.as_markup()
