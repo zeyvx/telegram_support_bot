@@ -126,3 +126,15 @@ async def get_cancel_answer(message: Message, state: FSMContext):
 
     await message.bot.send_message(user_id, text=f'Заявка отклонена. Причина:\n\n{message.text}')
     await state.clear()
+
+
+@router.callback_query(F.data.startswith('show_file:'))
+async def show_file(callback: CallbackQuery):
+    request_id = int(callback.data.split(':')[1])
+
+    request = await admins_dao.get_request_by_id(request_id)
+
+    file_id = request[4]
+
+    await callback.message.answer_document(file_id, caption=f'Файл заявки №{request[0]}')
+    await callback.answer()

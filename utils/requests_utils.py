@@ -15,12 +15,16 @@ def format_text(request):
     text = (
         f"📋 Заявка №{request[0]}\n\n"
         f"📂 Категория: {category}\n"
-        f"📝 Описание:\n{request[3]}\n\n"
+        f"📝 Описание:\n\n{request[3]}\n\n"
         f"📌 Статус: {request[5]}"
     )
 
     if request[7]:
         text += f"\n❌ Причина отказа: {request[7]}"
+
+    if request[4]:
+        text += f"\n📁 Прикреплён файл/фото"
+
     return text
 
 def format_short(request, number):

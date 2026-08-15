@@ -73,10 +73,3 @@ async def faq(callback: CallbackQuery):
 async def operator(callback: CallbackQuery):
     await callback.message.answer(f"Номер оператора: {OPERATOR_PHONE}")
     await callback.answer()
-
-
-@router.message(Command('karina'))
-async def karina(message: Message):
-    photo_id = NONE
-
-    await message.answer_photo(photo_id)

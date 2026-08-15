@@ -25,7 +25,8 @@ async def new_requests(callback: CallbackQuery):
             current=current,
             total=len(requests),
             prefix='new_requests',
-            request_id=request[0]
+            request_id=request[0],
+            file_id=request[4]
         )
     )   
 
@@ -60,7 +61,8 @@ async def new_request_page(callback: CallbackQuery):
             current=page,
             total=len(requests),
             prefix='new_requests',
-            request_id=request[0]
+            request_id=request[0],
+            file_id=request[4]
         )
     )
 
