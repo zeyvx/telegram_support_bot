@@ -6,6 +6,7 @@ import keyboards.user, keyboards.admin
 from database.dao import users_dao
 from config import OPERATOR_PHONE, ADMINS, NONE
 from states.registration import Registration
+from utils import chat_utils
 
 router = Router()
 
@@ -14,30 +15,33 @@ async def start(message: Message, state: FSMContext):
     await state.clear()
 
     if message.from_user.id in ADMINS:
-        await message.answer(
+        await chat_utils.show(
+            message.bot, message.chat.id,
             "🛠 Добро пожаловать в панель администратора!\n\n"
             "Здесь вы можете управлять заявками пользователей, просматривать обращения и отвечать на сообщения.\n\n"
             "Выберите нужный раздел в меню ниже.",
-            reply_markup=keyboards.admin.start_menu()
+            keyboards.admin.start_menu()
         )
         return
 
     user = await users_dao.get_user(message.from_user.id)
 
     if user:
-        await message.answer(
+        await chat_utils.show(
+            message.bot, message.chat.id,
             "Добро пожаловать в главное меню!\n\n"
             "Выберите нужное действие:",
-            reply_markup=keyboards.user.main_keyboard()
+            keyboards.user.main_keyboard()
         )
         return
 
     await state.set_state(Registration.waiting_contact)
-    await message.answer(
+    await chat_utils.show(
+        message.bot, message.chat.id,
         "Здравствуйте! 👋\n\n"
         "Добро пожаловать в службу поддержки.\n"
         "Для начала работы отправьте свой контакт, нажав кнопку ниже.",
-        reply_markup=keyboards.user.send_contact()
+        keyboards.user.send_contact()
     )
 
 @router.message(Registration.waiting_contact, F.contact)
@@ -64,19 +68,33 @@ async def save_user(message: Message, state: FSMContext):
         reply_markup=ReplyKeyboardRemove()
     )
 
+@router.message(Registration.waiting_contact)
+async def invalid_contact(message: Message):
+    await message.answer(
+        "Пожалуйста, отправьте контакт для регистрации",
+        reply_markup=keyboards.user.send_contact()
+    )
+
 @router.callback_query(F.data == 'faq')
 async def faq(callback: CallbackQuery):
-    await callback.message.answer("FAQ")
+    text = (
+        "❓ Часто задаваемые вопросы\n\n"
+        "Как отправить заявку?\n"
+        "Нажмите «Отправить заявку», выберите категорию и опишите проблему.\n\n"
+        "Как узнать статус заявки?\n"
+        "Откройте «Мои заявки» — там видно статус и ответ, если он есть.\n\n"
+        "Сколько ждать ответа?\n"
+        "Обычно до 24 часов.\n\n"
+        "Не нашли ответ? Свяжитесь с оператором."
+    )
+    await chat_utils.show(callback.bot, callback.message.chat.id, text, keyboards.user.back_to_menu())
     await callback.answer()
 
 @router.callback_query(F.data == 'call_operator')
 async def operator(callback: CallbackQuery):
-    await callback.message.answer(f"Номер оператора: {OPERATOR_PHONE}")
+    await chat_utils.show(
+        callback.bot, callback.message.chat.id,
+        f"Номер оператора: {OPERATOR_PHONE}",
+        keyboards.user.back_to_menu()
+    )
     await callback.answer()
-
-
-@router.message(Command('karina'))
-async def karina(message: Message):
-    photo_id = NONE
-
-    await message.answer_photo(photo_id)

@@ -33,6 +33,9 @@ async def complete_request(callback: CallbackQuery):
         await callback.answer("Заявка не найдена или уже завершена/принадлежит другому админу", show_alert=True)
         return
 
+    request = await admins_dao.get_request_by_id(request_id)
+    await callback.bot.send_message(request[1], f"✅ Ваша заявка №{request_id} завершена!")
+
     await callback.message.edit_text("Успешно завершена!", reply_markup=start_menu())
     await callback.answer()
 
@@ -126,3 +129,15 @@ async def get_cancel_answer(message: Message, state: FSMContext):
 
     await message.bot.send_message(user_id, text=f'Заявка отклонена. Причина:\n\n{message.text}')
     await state.clear()
+
+
+@router.callback_query(F.data.startswith('show_file:'))
+async def show_file(callback: CallbackQuery):
+    request_id = int(callback.data.split(':')[1])
+
+    request = await admins_dao.get_request_by_id(request_id)
+
+    file_id = request[4]
+
+    await callback.message.answer_document(file_id, caption=f'Файл заявки №{request[0]}')
+    await callback.answer()

@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-def get_navigation(current, total, prefix, request_id = None):
+def get_navigation(current, total, prefix, request_id = None, file_id = None):
     buttons = []
 
     if current > 0:
@@ -25,5 +25,8 @@ def get_navigation(current, total, prefix, request_id = None):
             text='Взять в работу',
             callback_data=f'take_request:{request_id}'
         ), InlineKeyboardButton(text='Отклонить',callback_data=f'cancel_request:{request_id}')])
+
+    if file_id is not None:
+        keyboard.append([InlineKeyboardButton(text='Посмотреть файл', callback_data=f'show_file:{request_id}')])
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
