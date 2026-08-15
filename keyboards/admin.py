@@ -30,3 +30,10 @@ def my_works_list_keyboard(requests):
 
     builder.row(InlineKeyboardButton(text='В меню', callback_data='back_to_menu'))
     return builder.as_markup()
+
+def back_to_menu():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='🔙 Назад', callback_data='back_to_menu')]
+    ])
+
+    return keyboard

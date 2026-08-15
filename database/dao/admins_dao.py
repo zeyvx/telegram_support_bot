@@ -49,3 +49,10 @@ async def get_statistics():
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute("SELECT status, COUNT(*) FROM requests GROUP BY status")
         return await cursor.fetchall()
+
+
+async def cancel_request(request_id, admin_id, reason):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute("UPDATE requests SET status = 'Отклонено', admin_id = ?, reason = ? WHERE id = ?", (admin_id, reason ,request_id))
+        await conn.commit()
+        return cursor.rowcount > 0

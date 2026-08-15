@@ -1,0 +1,56 @@
+categories = {
+        "tech": "Техническая",
+        "payment": "Оплата",
+        "delivery": "Доставка",
+        "order": "Заказ",
+        "another": "Другое"
+    }
+
+def format_text(request):
+    category = categories.get(
+        request[2],
+        request[2]
+    )
+
+    text = (
+        f"📋 Заявка №{request[0]}\n\n"
+        f"📂 Категория: {category}\n"
+        f"📝 Описание:\n{request[3]}\n\n"
+        f"📌 Статус: {request[5]}"
+    )
+
+    if request[7]:
+        text += f"\n❌ Причина отказа: {request[7]}"
+    return text
+
+def format_short(request, number):
+
+    category = categories.get(
+        request[2],
+        request[2]
+    )
+
+    return (
+        f"{number}. {category} - {request[5]}"
+    )
+
+
+def format_stats(stats):
+
+    new_count = stats.get('Новая', 0)
+    in_progress = stats.get('В работе', 0)
+    completed = stats.get('Завершена', 0)
+    canceled = stats.get('Отклонено', 0)
+
+    total = sum(stats.values())
+    
+    text = (
+        f"📊 Статистика заявок\n\n"
+        f"Всего заявок: {total}\n\n"
+        f"🆕 Новые: {new_count}\n"
+        f"🔧 В работе: {in_progress}\n"
+        f"✅ Завершено: {completed}\n"
+        f"❌ Отклонено: {canceled}" 
+    )
+
+    return text

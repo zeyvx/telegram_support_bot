@@ -3,8 +3,8 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from states.admin_reply import AdminReply
 from database.dao import admins_dao
-from keyboards.admin import start_menu, request_actions_keyboard
-from services.requests_service import format_text
+from keyboards.admin import start_menu, request_actions_keyboard, back_to_menu
+from utils.requests_utils import format_text
 
 router = Router()
 
@@ -95,4 +95,34 @@ async def get_admin_reply(message: Message, state: FSMContext):
     await message.bot.send_message(user_id, f"Ответ по вашей заявке:\n\n{message.text}")
     
     await message.answer("Ответ отправлен пользователю", reply_markup=start_menu())
+    await state.clear()
+
+
+@router.callback_query(F.data.startswith('cancel_request:'))
+async def cancel_request(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(request_id = int(callback.data.split(':')[1]), admin_id = callback.from_user.id)
+
+    await state.set_state(AdminReply.waiting_for_cancel_reason)
+
+    await callback.message.edit_text('Введите причину отказа', reply_markup=back_to_menu())
+    await callback.answer()
+
+@router.message(AdminReply.waiting_for_cancel_reason, F.text)
+async def get_cancel_answer(message: Message, state: FSMContext):
+    data = await state.get_data()
+    request_id = data.get('request_id')
+    admin_id = data.get('admin_id')
+
+    success = await admins_dao.cancel_request(request_id, admin_id, message.text)
+
+    if not success:
+        await message.answer('Что то пошло не так')
+        await state.clear()
+        return
+
+    request = await admins_dao.get_request_by_id(request_id)
+
+    user_id = request[1]
+
+    await message.bot.send_message(user_id, text=f'Заявка отклонена. Причина:\n\n{message.text}')
     await state.clear()

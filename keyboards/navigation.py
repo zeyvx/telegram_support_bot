@@ -24,6 +24,6 @@ def get_navigation(current, total, prefix, request_id = None):
         keyboard.append([InlineKeyboardButton(
             text='Взять в работу',
             callback_data=f'take_request:{request_id}'
-        )])
+        ), InlineKeyboardButton(text='Отклонить',callback_data=f'cancel_request:{request_id}')])
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
