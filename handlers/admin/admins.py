@@ -2,7 +2,7 @@ from aiogram.types import CallbackQuery
 from aiogram import Router, F
 import database.dao.admins_dao as admins_dao
 from keyboards import navigation, admin
-from services import requests_service
+from utils import requests_utils
 
 router = Router()
 
@@ -20,7 +20,7 @@ async def new_requests(callback: CallbackQuery):
     request = requests[current]
 
     await callback.message.edit_text(
-        text=requests_service.format_text(request),
+        text=requests_utils.format_text(request),
         reply_markup=navigation.get_navigation(
             current=current,
             total=len(requests),
@@ -55,7 +55,7 @@ async def new_request_page(callback: CallbackQuery):
     request = requests[page]
 
     await callback.message.edit_text(
-        text=requests_service.format_text(request),
+        text=requests_utils.format_text(request),
         reply_markup=navigation.get_navigation(
             current=page,
             total=len(requests),
@@ -76,15 +76,16 @@ async def my_works(callback: CallbackQuery):
         await callback.answer()
         return
 
-    current = 0
+    page_requests = my_requests[:5]
 
-    request = my_requests[current]
+    text = "\n".join(
+        requests_utils.format_short(request, i + 1)
+        for i, request in enumerate(page_requests)
+    )
 
     await callback.message.edit_text(
-        text=requests_service.format_text(request),
-        reply_markup=navigation.get_navigation(current=current,
-                                               total=len(my_requests),
-                                               prefix='my_works')
+        text=text,
+        reply_markup=admin.my_works_list_keyboard(page_requests)
     )
 
     await callback.answer()
@@ -106,7 +107,7 @@ async def my_works_page(callback: CallbackQuery):
     request = my_requests[page]
     
     await callback.message.edit_text(
-        text=requests_service.format_text(request),
+        text=requests_utils.format_text(request),
         reply_markup=navigation.get_navigation(
             current=page,
             total=len(my_requests),
@@ -129,7 +130,7 @@ async def all_requests(callback: CallbackQuery):
 
     request = requests[current]
 
-    await callback.message.edit_text(text=requests_service.format_text(request),
+    await callback.message.edit_text(text=requests_utils.format_text(request),
                                      reply_markup=navigation.get_navigation(current=current,
                                                                             total=len(requests),
                                                                             prefix='all_requests',))
@@ -159,7 +160,7 @@ async def all_request_page(callback: CallbackQuery):
     request = requests[page]
 
     await callback.message.edit_text(
-        text=requests_service.format_text(request),
+        text=requests_utils.format_text(request),
         reply_markup=navigation.get_navigation(
             current=page,
             total=len(requests),
@@ -167,4 +168,14 @@ async def all_request_page(callback: CallbackQuery):
         )
     )
 
+    await callback.answer()
+
+
+@router.callback_query(F.data == 'statistic')
+async def statistic(callback: CallbackQuery):
+    stats = dict(await admins_dao.get_statistics())
+
+    text = requests_utils.format_stats(stats)
+
+    await callback.message.edit_text(text=text, reply_markup=admin.start_menu())
     await callback.answer()

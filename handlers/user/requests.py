@@ -5,7 +5,7 @@ from states.request_send import SendRequest
 from keyboards import navigation, user
 from keyboards import admin
 from database.dao import users_dao
-from services import requests_service as requests_service
+from utils import requests_utils as requests_utils
 from config import ADMINS
 
 router = Router()
@@ -116,7 +116,6 @@ async def get_file_invalid(message: Message, state: FSMContext):
         "Пожалуйста, прикрепите файл или фото, либо нажмите 'Пропустить' ⬆️"
     )
 
-#Посмотреть свои заявки
 
 @router.callback_query(F.data == 'my_requests')
 async def my_requests(callback: CallbackQuery):
@@ -139,7 +138,7 @@ async def my_requests(callback: CallbackQuery):
     request = requests[current]
 
     await callback.message.edit_text(
-        text=requests_service.format_text(request),
+        text=requests_utils.format_text(request),
         reply_markup=navigation.get_navigation(
             current=current,
             total=len(requests),
@@ -176,7 +175,7 @@ async def request_page(callback: CallbackQuery):
     request = requests[page]
 
     await callback.message.edit_text(
-        text=requests_service.format_text(request),
+        text=requests_utils.format_text(request),
         reply_markup=navigation.get_navigation(
             current=page,
             total=len(requests),
@@ -189,7 +188,15 @@ async def request_page(callback: CallbackQuery):
 @router.callback_query(F.data == 'back_to_menu')
 async def back_to_menu(callback: CallbackQuery):
     if callback.from_user.id in ADMINS:
-        await callback.message.edit_text(text='Главное меню', reply_markup=admin.start_menu())
+        await callback.message.edit_text(
+            "🛠 Добро пожаловать в панель администратора!\n\n"
+            "Здесь вы можете управлять заявками пользователей, просматривать обращения и отвечать на сообщения.\n\n"
+            "Выберите нужный раздел в меню ниже.", reply_markup=admin.start_menu()
+        )
     else:
-        await callback.message.edit_text(text='Главное меню', reply_markup=user.main_keyboard())
+        await callback.message.edit_text(
+            "Добро пожаловать в главное меню!\n\n"
+            "Выберите нужное действие:",
+            reply_markup=user.main_keyboard()
+        )
     await callback.answer()

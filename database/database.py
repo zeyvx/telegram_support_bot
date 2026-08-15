@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS requests(
                         file_id TEXT,
                         status TEXT DEFAULT 'Новая',
                         admin_id INTEGER NULL,
+                        reason TEXT NULL,
                         FOREIGN KEY(user_id) REFERENCES users(user_id)
                         )
 """)

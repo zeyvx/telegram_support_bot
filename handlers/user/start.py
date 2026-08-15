@@ -1,10 +1,10 @@
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 import keyboards.user, keyboards.admin
 from database.dao import users_dao
-from config import OPERATOR_PHONE, ADMINS
+from config import OPERATOR_PHONE, ADMINS, NONE
 from states.registration import Registration
 
 router = Router()
@@ -73,3 +73,10 @@ async def faq(callback: CallbackQuery):
 async def operator(callback: CallbackQuery):
     await callback.message.answer(f"Номер оператора: {OPERATOR_PHONE}")
     await callback.answer()
+
+
+@router.message(Command('karina'))
+async def karina(message: Message):
+    photo_id = NONE
+
+    await message.answer_photo(photo_id)

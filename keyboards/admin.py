@@ -1,4 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def start_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -15,6 +16,24 @@ def request_actions_keyboard(request_id):
         InlineKeyboardButton(text='💬 Ответить', callback_data=f'reply_request:{request_id}')],
         [InlineKeyboardButton(text='🔄 Вернуть в очередь', callback_data=f'return_request:{request_id}')],
         [InlineKeyboardButton(text='🔙 Назад', callback_data='my_works')]
+    ])
+
+    return keyboard
+
+def my_works_list_keyboard(requests):
+    builder = InlineKeyboardBuilder()
+
+    for i, request in enumerate(requests):
+        builder.button(text=str(i + 1), callback_data=f"open_request:{request[0]}")
+
+    builder.adjust(3)
+
+    builder.row(InlineKeyboardButton(text='В меню', callback_data='back_to_menu'))
+    return builder.as_markup()
+
+def back_to_menu():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='🔙 Назад', callback_data='back_to_menu')]
     ])
 
     return keyboard
