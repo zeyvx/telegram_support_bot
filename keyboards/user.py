@@ -19,10 +19,36 @@ def problems_keyboard():
 
 def skip():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='Пропустить', callback_data='skip')]
+        [InlineKeyboardButton(text='Пропустить', callback_data='skip')],
+        [InlineKeyboardButton(text='Назад', callback_data='back_to_menu')]
     ])
 
     return keyboard
+
+def back_to_menu():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='В меню', callback_data='back_to_menu')]
+    ])
+
+    return keyboard
+
+def request_navigation(current, total, request_id, status):
+    buttons = []
+
+    if current > 0:
+        buttons.append(InlineKeyboardButton(text='⬅️ Пред.', callback_data=f'request_page:{current - 1}'))
+
+    if current < total - 1:
+        buttons.append(InlineKeyboardButton(text='След. ➡️', callback_data=f'request_page:{current + 1}'))
+
+    buttons.append(InlineKeyboardButton(text='В меню', callback_data='back_to_menu'))
+
+    keyboard = [buttons]
+
+    if status == 'Новая':
+        keyboard.append([InlineKeyboardButton(text='❌ Отменить', callback_data=f'cancel_own_request:{request_id}')])
+
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 def send_contact():
     keyboard = ReplyKeyboardMarkup(keyboard=[

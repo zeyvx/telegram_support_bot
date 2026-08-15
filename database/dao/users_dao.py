@@ -30,3 +30,9 @@ async def get_my_requests(user_id):
         cursor = await conn.execute("SELECT * FROM requests WHERE user_id = ?", (user_id,))
 
         return await cursor.fetchall()
+
+async def cancel_own_request(request_id, user_id):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute("UPDATE requests SET status = 'Отменена' WHERE id = ? AND user_id = ? AND status = 'Новая'", (request_id, user_id))
+        await conn.commit()
+        return cursor.rowcount > 0

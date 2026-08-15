@@ -45,6 +45,7 @@ def format_stats(stats):
     in_progress = stats.get('В работе', 0)
     completed = stats.get('Завершена', 0)
     canceled = stats.get('Отклонено', 0)
+    canceled_by_user = stats.get('Отменена', 0)
 
     total = sum(stats.values())
     
@@ -54,7 +55,8 @@ def format_stats(stats):
         f"🆕 Новые: {new_count}\n"
         f"🔧 В работе: {in_progress}\n"
         f"✅ Завершено: {completed}\n"
-        f"❌ Отклонено: {canceled}" 
+        f"❌ Отклонено: {canceled}\n"
+        f"🚫 Отменено пользователем: {canceled_by_user}"
     )
 
     return text

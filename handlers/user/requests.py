@@ -2,10 +2,9 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states.request_send import SendRequest
-from keyboards import navigation, user
-from keyboards import admin
+from keyboards import user, admin
 from database.dao import users_dao
-from utils import requests_utils as requests_utils
+from utils import requests_utils, chat_utils
 from config import ADMINS
 
 router = Router()
@@ -13,7 +12,7 @@ router = Router()
 @router.callback_query(F.data == 'send_request')
 async def send_request(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SendRequest.category)
-    await callback.message.edit_text("Пожалуйста выберите категорию", reply_markup=user.problems_keyboard())
+    await chat_utils.show(callback.bot, callback.message.chat.id, "Пожалуйста выберите категорию", user.problems_keyboard())
     await callback.answer()
 
 @router.callback_query(SendRequest.category, F.data.startswith("problem_"))
@@ -23,36 +22,25 @@ async def choose_category(callback: CallbackQuery, state: FSMContext):
     await state.update_data(category=category)
     await state.set_state(SendRequest.request)
 
-    bot_message = await callback.message.edit_text("Пожалуйста опишите вашу проблему")
-
-    await state.update_data(request_message_id=bot_message.message_id)
+    await chat_utils.show(callback.bot, callback.message.chat.id, "Пожалуйста опишите вашу проблему", user.back_to_menu())
 
     await callback.answer()
 
 @router.message(SendRequest.request, F.text)
 async def get_request(message: Message, state: FSMContext):
+    if not message.text.strip():
+        await message.answer("Пожалуйста, опишите проблему текстом")
+        return
+
     await state.update_data(request=message.text)
-
-    data = await state.get_data()
-
-    await message.bot.delete_message(
-        chat_id=message.chat.id,
-        message_id=data['request_message_id']
-    )
-
     await state.set_state(SendRequest.file)
 
-    bot_message = await message.answer(
-        "Прикрепите файл или нажмите 'Пропустить'",
-        reply_markup=user.skip()
-    )
-
-    await state.update_data(file_message_id=bot_message.message_id)
+    await chat_utils.show(message.bot, message.chat.id, "Прикрепите файл или нажмите 'Пропустить'", user.skip())
 
 @router.message(SendRequest.request)
-async def invalid_request(message:Message, state: FSMContext):
+async def invalid_request(message: Message, state: FSMContext):
     await message.answer("Пожалуйста, опишите проблему текстом")
-    
+
 
 @router.message(SendRequest.file, F.document)
 async def get_file(message: Message, state: FSMContext):
@@ -69,11 +57,6 @@ async def get_photo(message: Message, state: FSMContext):
 async def _save_request(message: Message, state: FSMContext):
     data = await state.get_data()
 
-    await message.bot.delete_message(
-        chat_id=message.chat.id,
-        message_id=data['file_message_id']
-    )
-
     await users_dao.add_request(
         message.from_user.id,
         category=data['category'],
@@ -83,10 +66,7 @@ async def _save_request(message: Message, state: FSMContext):
 
     await state.clear()
 
-    await message.answer(
-        "✅ Заявка успешно отправлена!",
-        reply_markup=user.main_keyboard()
-    )
+    await chat_utils.show(message.bot, message.chat.id, "✅ Заявка успешно отправлена!", user.main_keyboard())
 
 
 @router.callback_query(SendRequest.file, F.data == "skip")
@@ -102,10 +82,7 @@ async def skip_file(callback: CallbackQuery, state: FSMContext):
 
     await state.clear()
 
-    await callback.message.edit_text(
-        "✅ Заявка успешно отправлена!",
-        reply_markup=user.main_keyboard()
-    )
+    await chat_utils.show(callback.bot, callback.message.chat.id, "✅ Заявка успешно отправлена!", user.main_keyboard())
 
     await callback.answer()
 
@@ -119,84 +96,83 @@ async def get_file_invalid(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'my_requests')
 async def my_requests(callback: CallbackQuery):
-
     user_id = callback.from_user.id
-
     requests = await users_dao.get_my_requests(user_id)
 
     if not requests:
-        await callback.message.edit_text(
-            "У вас пока нет заявок",
-            reply_markup=user.main_keyboard()
-        )
-
+        await chat_utils.show(callback.bot, callback.message.chat.id, "У вас пока нет заявок", user.main_keyboard())
         await callback.answer()
         return
 
     current = 0
-
     request = requests[current]
 
-    await callback.message.edit_text(
-        text=requests_utils.format_text(request),
-        reply_markup=navigation.get_navigation(
-            current=current,
-            total=len(requests),
-            prefix='request'
-        )
-    )   
+    await chat_utils.show(
+        callback.bot, callback.message.chat.id,
+        requests_utils.format_text(request),
+        user.request_navigation(current=current, total=len(requests), request_id=request[0], status=request[5])
+    )
 
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("request_page:"))
 async def request_page(callback: CallbackQuery):
-
-    page = int(
-        callback.data.split(":")[1]
-    )
-
+    page = int(callback.data.split(":")[1])
     user_id = callback.from_user.id
 
     requests = await users_dao.get_my_requests(user_id)
 
     if not requests:
-        await callback.answer(
-            "У вас нет заявок"
-        )
+        await callback.answer("У вас нет заявок")
         return
 
     if page < 0 or page >= len(requests):
-        await callback.answer(
-            "Заявка не найдена"
-        )
+        await callback.answer("Заявка не найдена")
         return
 
     request = requests[page]
 
-    await callback.message.edit_text(
-        text=requests_utils.format_text(request),
-        reply_markup=navigation.get_navigation(
-            current=page,
-            total=len(requests),
-            prefix='request'
-        )
+    await chat_utils.show(
+        callback.bot, callback.message.chat.id,
+        requests_utils.format_text(request),
+        user.request_navigation(current=page, total=len(requests), request_id=request[0], status=request[5])
     )
 
     await callback.answer()
 
+
+@router.callback_query(F.data.startswith('cancel_own_request:'))
+async def cancel_own_request(callback: CallbackQuery):
+    request_id = int(callback.data.split(':')[1])
+
+    success = await users_dao.cancel_own_request(request_id, callback.from_user.id)
+
+    if not success:
+        await callback.answer("Не удалось отменить заявку", show_alert=True)
+        return
+
+    await chat_utils.show(callback.bot, callback.message.chat.id, "Заявка отменена", user.main_keyboard())
+    await callback.answer()
+
+
 @router.callback_query(F.data == 'back_to_menu')
-async def back_to_menu(callback: CallbackQuery):
+async def back_to_menu(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+
     if callback.from_user.id in ADMINS:
-        await callback.message.edit_text(
+        await chat_utils.show(
+            callback.bot, callback.message.chat.id,
             "🛠 Добро пожаловать в панель администратора!\n\n"
             "Здесь вы можете управлять заявками пользователей, просматривать обращения и отвечать на сообщения.\n\n"
-            "Выберите нужный раздел в меню ниже.", reply_markup=admin.start_menu()
+            "Выберите нужный раздел в меню ниже.",
+            admin.start_menu()
         )
     else:
-        await callback.message.edit_text(
+        await chat_utils.show(
+            callback.bot, callback.message.chat.id,
             "Добро пожаловать в главное меню!\n\n"
             "Выберите нужное действие:",
-            reply_markup=user.main_keyboard()
+            user.main_keyboard()
         )
     await callback.answer()
