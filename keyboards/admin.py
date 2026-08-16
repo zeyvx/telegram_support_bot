@@ -1,6 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from utils.requests_utils import categories
 
 
 def start_menu():
@@ -94,11 +93,9 @@ def my_works_list_keyboard(requests):
 def all_requests_keyboard(page, total_pages, requests):
     builder = InlineKeyboardBuilder()
 
-    for request in requests:
-        category = categories.get(request[2], 'Неизвестная категория')
-
+    for i, request in enumerate(requests, 1):
         builder.button(
-            text=f'{request[0]} — {request[5]} — {category}',
+            text=str(i),
             callback_data=f'open_request:{request[0]}'
         )
 
@@ -140,11 +137,9 @@ def all_requests_keyboard(page, total_pages, requests):
 def rejected_requests_keyboard(page, total_pages, requests):
     builder = InlineKeyboardBuilder()
 
-    for request in requests:
-        category = categories.get(request[2], 'Неизвестная категория')
-
+    for i, request in enumerate(requests, 1):
         builder.button(
-            text=f'{request[0]} — {request[5]} — {category}',
+            text=str(i),
             callback_data=f'open_request:{request[0]}'
         )
 
