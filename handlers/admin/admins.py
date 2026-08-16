@@ -1,11 +1,64 @@
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.filters import Command, CommandObject
 import database.dao.admins_dao as admins_dao
 from keyboards import navigation, admin
 from utils import requests_utils
+from config import ADMINS
 
 router = Router()
+
+
+@router.message(Command('find'))
+async def find_request(message: Message, command: CommandObject):
+    if message.from_user.id not in ADMINS:
+        await message.answer("У вас нет доступа к этой команде.")
+        return
+
+    if not command.args:
+        await message.answer(
+            "Укажите ID заявки.\n\n"
+            "Пример:\n"
+            "/find 25"
+        )
+        return
+
+    try:
+        request_id = int(command.args.strip())
+    except ValueError:
+        await message.answer("ID заявки должен быть числом. Например: /find 25")
+        return
+
+    request = await admins_dao.get_request_by_id(request_id)
+
+    if request is None:
+        await message.answer(f"Заявка №{request_id} не найдена.")
+        return
+
+    category = requests_utils.categories.get(
+        request[2],
+        "Неизвестная категория"
+    )
+
+    file_id = request[4] if request[4] else "Нет"
+    admin_id = request[6] if request[6] else "Не назначен"
+    reason = request[7] if request[7] else "Нет"
+    file_type = request[8] if request[8] else "Нет"
+
+    text = (
+        f"Заявка №{request[0]}\n\n"
+        f"Пользователь: {request[1]}\n"
+        f"Категория: {category}\n"
+        f"Описание:\n{request[3]}\n\n"
+        f"Файл: {file_id}\n"
+        f"Тип файла: {file_type}\n"
+        f"Статус: {request[5]}\n"
+        f"Администратор: {admin_id}\n"
+        f"Причина отказа: {reason}"
+    )
+
+    await message.answer(text)
 
 
 @router.callback_query(F.data == 'new_requests')
@@ -15,7 +68,7 @@ async def new_requests(callback: CallbackQuery):
     if not requests:
         try:
             await callback.message.edit_text(
-                "Пока нет новых заявок",
+                "Сейчас новых заявок нет.",
                 reply_markup=admin.start_menu()
             )
         except TelegramBadRequest as e:
@@ -47,17 +100,17 @@ async def new_request_page(callback: CallbackQuery):
     try:
         page = int(callback.data.split(":")[1])
     except (ValueError, IndexError):
-        await callback.answer("Некорректная страница")
+        await callback.answer("Не удалось определить страницу.", show_alert=True)
         return
 
     requests = await admins_dao.get_new_requests()
 
     if not requests:
-        await callback.answer("Нет новых заявок")
+        await callback.answer("Сейчас новых заявок нет.")
         return
 
     if page < 0 or page >= len(requests):
-        await callback.answer("Заявка не найдена")
+        await callback.answer("Такая заявка не найдена.", show_alert=True)
         return
 
     request = requests[page]
@@ -87,7 +140,7 @@ async def my_works(callback: CallbackQuery):
     if not my_requests:
         try:
             await callback.message.edit_text(
-                "У вас пока нет заявок",
+                "У вас пока нет заявок в работе.",
                 reply_markup=admin.start_menu()
             )
         except TelegramBadRequest as e:
@@ -106,7 +159,7 @@ async def my_works(callback: CallbackQuery):
 
     try:
         await callback.message.edit_text(
-            text=text,
+            text=f"📂 Мои заявки в работе\n\n{text}",
             reply_markup=admin.my_works_list_keyboard(page_requests)
         )
     except TelegramBadRequest as e:
@@ -121,17 +174,17 @@ async def my_works_page(callback: CallbackQuery):
     try:
         page = int(callback.data.split(':')[1])
     except (ValueError, IndexError):
-        await callback.answer("Некорректная страница")
+        await callback.answer("Не удалось определить страницу.", show_alert=True)
         return
 
     my_requests = await admins_dao.get_my_admin_requests(callback.from_user.id)
 
     if not my_requests:
-        await callback.answer("У вас нет заявок")
+        await callback.answer("У вас сейчас нет заявок в работе.")
         return
 
     if page < 0 or page >= len(my_requests):
-        await callback.answer("Заявка не найдена")
+        await callback.answer("Такая заявка не найдена.", show_alert=True)
         return
 
     request = my_requests[page]
