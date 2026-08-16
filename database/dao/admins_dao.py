@@ -13,6 +13,23 @@ async def get_all_requests():
         return await cursor.fetchall()
 
 
+async def get_all_requests_page(page, limit):
+    async with aiosqlite.connect('database.db') as conn:
+        offset = page * limit
+        cursor = await conn.execute(
+            "SELECT * FROM requests ORDER BY id DESC LIMIT ? OFFSET ?",
+            (limit, offset)
+        )
+        return await cursor.fetchall()
+
+
+async def get_all_requests_count():
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute("SELECT COUNT(*) FROM requests")
+        result = await cursor.fetchone()
+        return result[0]
+
+
 async def get_new_requests():
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute("SELECT * FROM requests WHERE status = 'Новая' ORDER BY id DESC")
