@@ -15,7 +15,7 @@ async def new_requests(callback: CallbackQuery):
     if not requests:
         try:
             await callback.message.edit_text(
-                "Пока нет новый заявок",
+                "Пока нет новых заявок",
                 reply_markup=admin.start_menu()
             )
         except TelegramBadRequest as e:
@@ -44,11 +44,8 @@ async def new_requests(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("new_requests_page:"))
 async def new_request_page(callback: CallbackQuery):
-
     try:
-        page = int(
-            callback.data.split(":")[1]
-        )
+        page = int(callback.data.split(":")[1])
     except (ValueError, IndexError):
         await callback.answer("Некорректная страница")
         return
@@ -56,15 +53,11 @@ async def new_request_page(callback: CallbackQuery):
     requests = await admins_dao.get_new_requests()
 
     if not requests:
-        await callback.answer(
-            "Нет новых заявок"
-        )
+        await callback.answer("Нет новых заявок")
         return
 
     if page < 0 or page >= len(requests):
-        await callback.answer(
-            "Заявка не найдена"
-        )
+        await callback.answer("Заявка не найдена")
         return
 
     request = requests[page]
@@ -94,7 +87,7 @@ async def my_works(callback: CallbackQuery):
     if not my_requests:
         try:
             await callback.message.edit_text(
-                "У вас пока нет новых заявок",
+                "У вас пока нет заявок",
                 reply_markup=admin.start_menu()
             )
         except TelegramBadRequest as e:
@@ -159,85 +152,6 @@ async def my_works_page(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.callback_query(F.data == 'all_requests')
-async def all_requests(callback: CallbackQuery):
-    requests = await admins_dao.get_all_requests()
-
-    if not requests:
-        try:
-            await callback.message.edit_text(
-                "Нет никаких заявок",
-                reply_markup=admin.start_menu()
-            )
-        except TelegramBadRequest as e:
-            if "message is not modified" not in str(e):
-                raise
-
-        await callback.answer()
-        return
-
-    current = 0
-    request = requests[current]
-
-    try:
-        await callback.message.edit_text(
-            text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(
-                current=current,
-                total=len(requests),
-                prefix='all_requests'
-            )
-        )
-    except TelegramBadRequest as e:
-        if "message is not modified" not in str(e):
-            raise
-
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("all_requests_page:"))
-async def all_request_page(callback: CallbackQuery):
-
-    try:
-        page = int(
-            callback.data.split(":")[1]
-        )
-    except (ValueError, IndexError):
-        await callback.answer("Некорректная страница")
-        return
-
-    requests = await admins_dao.get_all_requests()
-
-    if not requests:
-        await callback.answer(
-            "Нет никаких заявок"
-        )
-        return
-
-    if page < 0 or page >= len(requests):
-        await callback.answer(
-            "Заявка не найдена"
-        )
-        return
-
-    request = requests[page]
-
-    try:
-        await callback.message.edit_text(
-            text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(
-                current=page,
-                total=len(requests),
-                prefix='all_requests'
-            )
-        )
-    except TelegramBadRequest as e:
-        if "message is not modified" not in str(e):
-            raise
-
-    await callback.answer()
-
-
 @router.callback_query(F.data == 'statistic')
 async def statistic(callback: CallbackQuery):
     stats = dict(await admins_dao.get_statistics())
@@ -253,4 +167,9 @@ async def statistic(callback: CallbackQuery):
         if "message is not modified" not in str(e):
             raise
 
+    await callback.answer()
+
+
+@router.callback_query(F.data == 'nothing')
+async def nothing(callback: CallbackQuery):
     await callback.answer()
