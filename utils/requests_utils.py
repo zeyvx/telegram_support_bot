@@ -38,6 +38,34 @@ def format_short(request, number):
     return f"{number}. {category} - {request[5]}"
 
 
+def format_requests_list(requests):
+    text = "📋 Все заявки\n\n"
+
+    for request in requests:
+        status = {
+            'Новая': '🟢',
+            'В работе': '🔵',
+            'Завершена': '✅',
+            'Отклонено': '❌',
+            'Отменена': '🚫'
+        }.get(request[5], '❔')
+
+        category = categories.get(request[2], request[2])
+        text += f"{request[0]} — {status} — {category}\n"
+
+    return text
+
+
+def format_rejected_list(requests):
+    text = "❌ Отклоненные заявки\n\n"
+
+    for request in requests:
+        category = categories.get(request[2], request[2])
+        text += f"№{request[0]} — {category}\n"
+
+    return text
+
+
 def format_stats(stats):
     new_count = stats.get('Новая', 0)
     in_progress = stats.get('В работе', 0)
