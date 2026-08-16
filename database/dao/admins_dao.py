@@ -47,6 +47,16 @@ async def get_my_admin_requests(admin_id):
         return await cursor.fetchall()
 
 
+async def get_admin_requests_count(admin_id):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            "SELECT COUNT(*) FROM requests WHERE admin_id = ? AND status = 'В работе'",
+            (admin_id,)
+        )
+        result = await cursor.fetchone()
+        return result[0]
+
+
 async def get_rejected_requests_page(page, limit):
     async with aiosqlite.connect('database.db') as conn:
         offset = page * limit
@@ -70,8 +80,9 @@ async def take_request(request_id, admin_id):
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute(
             "UPDATE requests SET admin_id = ?, status = 'В работе' "
-            "WHERE id = ? AND status = 'Новая'",
-            (admin_id, request_id)
+            "WHERE id = ? AND status = 'Новая' "
+            "AND (SELECT COUNT(*) FROM requests WHERE admin_id = ? AND status = 'В работе') < 3",
+            (admin_id, request_id, admin_id)
         )
         await conn.commit()
         return cursor.rowcount > 0
