@@ -1,5 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from utils.requests_utils import categories
 
 
 def start_menu():
@@ -91,23 +92,17 @@ def my_works_list_keyboard(requests):
 
 
 def all_requests_keyboard(page, total_pages, requests):
-    keyboard = []
+    builder = InlineKeyboardBuilder()
 
     for request in requests:
-        status = {
-            'Новая': '🟢',
-            'В работе': '🔵',
-            'Завершена': '✅',
-            'Отклонено': '❌',
-            'Отменена': '🚫'
-        }.get(request[5], '❔')
+        category = categories.get(request[2], 'Неизвестная категория')
 
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f'{request[0]} — {status} — {request[2]}',
-                callback_data=f'open_request:{request[0]}'
-            )
-        ])
+        builder.button(
+            text=f'{request[0]} — {request[5]} — {category}',
+            callback_data=f'open_request:{request[0]}'
+        )
+
+    builder.adjust(3)
 
     navigation = []
 
@@ -134,24 +129,26 @@ def all_requests_keyboard(page, total_pages, requests):
             )
         )
 
-    keyboard.append(navigation)
-    keyboard.append([
+    builder.row(*navigation)
+    builder.row(
         InlineKeyboardButton(text='В меню', callback_data='back_to_menu')
-    ])
+    )
 
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    return builder.as_markup()
 
 
 def rejected_requests_keyboard(page, total_pages, requests):
-    keyboard = []
+    builder = InlineKeyboardBuilder()
 
     for request in requests:
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f'№{request[0]} — {request[2]}',
-                callback_data=f'open_request:{request[0]}'
-            )
-        ])
+        category = categories.get(request[2], 'Неизвестная категория')
+
+        builder.button(
+            text=f'{request[0]} — {request[5]} — {category}',
+            callback_data=f'open_request:{request[0]}'
+        )
+
+    builder.adjust(3)
 
     navigation = []
 
@@ -178,12 +175,12 @@ def rejected_requests_keyboard(page, total_pages, requests):
             )
         )
 
-    keyboard.append(navigation)
-    keyboard.append([
+    builder.row(*navigation)
+    builder.row(
         InlineKeyboardButton(text='В меню', callback_data='back_to_menu')
-    ])
+    )
 
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    return builder.as_markup()
 
 
 def back_to_menu():
