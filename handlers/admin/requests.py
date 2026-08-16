@@ -17,15 +17,27 @@ async def take_request(callback: CallbackQuery):
         return
 
     request_id = int(callback.data.split(':')[1])
+    active_count = await admins_dao.get_admin_requests_count(callback.from_user.id)
+
+    if active_count >= 3:
+        await callback.answer(
+            "У вас уже 3 заявки в работе. Завершите хотя бы одну, чтобы взять новую.",
+            show_alert=True
+        )
+        return
 
     success = await admins_dao.take_request(request_id, callback.from_user.id)
 
     if not success:
-        await callback.answer("Заявку уже взяли в работу", show_alert=True)
+        await callback.answer(
+            "Не удалось взять заявку в работу. Возможно, её уже взял другой администратор.",
+            show_alert=True
+        )
         return
 
     await callback.message.edit_text(
-        f"Заявка №{request_id} взята в работу",
+        f"Заявка №{request_id} взята в работу.\n\n"
+        "Теперь она находится в разделе «Мои заявки».",
         reply_markup=start_menu()
     )
     await callback.answer()
@@ -38,12 +50,11 @@ async def complete_request(callback: CallbackQuery):
         return
 
     request_id = int(callback.data.split(':')[1])
-
     success = await admins_dao.complete_request(request_id, callback.from_user.id)
 
     if not success:
         await callback.answer(
-            "Заявка не найдена или уже завершена/принадлежит другому админу",
+            "Не удалось завершить заявку. Проверьте её статус и владельца.",
             show_alert=True
         )
         return
@@ -56,11 +67,13 @@ async def complete_request(callback: CallbackQuery):
 
     await callback.bot.send_message(
         request[1],
-        f"✅ Ваша заявка №{request_id} завершена!\n\nСпасибо, что обратились в службу поддержки."
+        f"Ваша заявка №{request_id} завершена.\n\n"
+        "Спасибо, что обратились в службу поддержки."
     )
 
     await callback.message.edit_text(
-        f"Заявка №{request_id} успешно завершена",
+        f"Заявка №{request_id} успешно завершена.\n\n"
+        "Теперь вы можете взять новую заявку в работу.",
         reply_markup=start_menu()
     )
     await callback.answer()
@@ -93,18 +106,18 @@ async def return_request(callback: CallbackQuery):
         return
 
     request_id = int(callback.data.split(':')[1])
-
     success = await admins_dao.return_request(request_id, callback.from_user.id)
 
     if not success:
         await callback.answer(
-            "Не удалось вернуть заявку в очередь",
+            "Не удалось вернуть заявку в очередь. Возможно, её статус уже изменился.",
             show_alert=True
         )
         return
 
     await callback.message.edit_text(
-        f"Заявка №{request_id} возвращена в очередь",
+        f"Заявка №{request_id} возвращена в очередь.\n\n"
+        "Теперь её снова сможет взять любой свободный администратор.",
         reply_markup=start_menu()
     )
     await callback.answer()
@@ -125,14 +138,14 @@ async def reply_request(callback: CallbackQuery, state: FSMContext):
 
     if request[5] != 'В работе':
         await callback.answer(
-            "Заявка уже не находится в работе",
+            "Ответить можно только на заявку, которая находится в работе.",
             show_alert=True
         )
         return
 
     if request[6] != callback.from_user.id:
         await callback.answer(
-            "Эта заявка принадлежит другому админу",
+            "Эта заявка находится в работе у другого администратора.",
             show_alert=True
         )
         return
@@ -141,7 +154,7 @@ async def reply_request(callback: CallbackQuery, state: FSMContext):
     await state.set_state(AdminReply.waiting_for_reply)
 
     await callback.message.edit_text(
-        "Напишите ваш ответ пользователю:",
+        f"Напишите ответ для пользователя по заявке №{request_id}:",
         reply_markup=back_to_menu()
     )
     await callback.answer()
@@ -153,34 +166,34 @@ async def get_admin_reply(message: Message, state: FSMContext):
     request_id = data.get('request_id')
 
     if request_id is None:
-        await message.answer("Заявка не найдена")
+        await message.answer("Не удалось найти заявку. Попробуйте открыть её снова.")
         await state.clear()
         return
 
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
-        await message.answer("Заявка не найдена")
+        await message.answer("Заявка больше не существует.")
         await state.clear()
         return
 
     if request[5] != 'В работе':
-        await message.answer("Заявка больше не находится в работе")
+        await message.answer("Эта заявка больше не находится в работе.")
         await state.clear()
         return
 
     if request[6] != message.from_user.id:
-        await message.answer("Эта заявка принадлежит другому админу")
+        await message.answer("Эта заявка находится в работе у другого администратора.")
         await state.clear()
         return
 
     await message.bot.send_message(
         request[1],
-        f"💬 Ответ по вашей заявке №{request_id}:\n\n{message.text}"
+        f"Ответ по вашей заявке №{request_id}:\n\n{message.text}"
     )
 
     await message.answer(
-        f"Ответ по заявке №{request_id} отправлен пользователю",
+        f"Ответ по заявке №{request_id} отправлен пользователю.",
         reply_markup=start_menu()
     )
     await state.clear()
@@ -201,14 +214,14 @@ async def cancel_request(callback: CallbackQuery, state: FSMContext):
 
     if request[5] != 'В работе':
         await callback.answer(
-            "Заявка уже не находится в работе",
+            "Отклонить можно только заявку, которая находится в работе.",
             show_alert=True
         )
         return
 
     if request[6] != callback.from_user.id:
         await callback.answer(
-            "Эта заявка принадлежит другому админу",
+            "Эта заявка находится в работе у другого администратора.",
             show_alert=True
         )
         return
@@ -220,7 +233,8 @@ async def cancel_request(callback: CallbackQuery, state: FSMContext):
     await state.set_state(AdminReply.waiting_for_cancel_reason)
 
     await callback.message.edit_text(
-        "Напишите причину отказа:",
+        f"Укажите причину отклонения заявки №{request_id}:\n\n"
+        "Эта причина будет отправлена пользователю.",
         reply_markup=back_to_menu()
     )
     await callback.answer()
@@ -233,48 +247,54 @@ async def get_cancel_answer(message: Message, state: FSMContext):
     admin_id = data.get('admin_id')
 
     if request_id is None or admin_id != message.from_user.id:
-        await message.answer("Заявка не найдена")
+        await message.answer("Не удалось определить заявку.")
         await state.clear()
+        return
+
+    reason = message.text.strip()
+
+    if not reason:
+        await message.answer("Причина не может быть пустой. Напишите причину отклонения.")
         return
 
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
-        await message.answer("Заявка не найдена")
+        await message.answer("Заявка больше не существует.")
         await state.clear()
         return
 
     if request[5] != 'В работе':
-        await message.answer("Заявка уже не находится в работе")
+        await message.answer("Эта заявка больше не находится в работе.")
         await state.clear()
         return
 
     if request[6] != message.from_user.id:
-        await message.answer("Эта заявка принадлежит другому админу")
+        await message.answer("Эта заявка находится в работе у другого администратора.")
         await state.clear()
         return
 
     success = await admins_dao.cancel_request(
         request_id,
         admin_id,
-        message.text
+        reason
     )
 
     if not success:
-        await message.answer("Не удалось отклонить заявку")
+        await message.answer("Не удалось отклонить заявку. Попробуйте ещё раз.")
         await state.clear()
         return
 
     await message.bot.send_message(
         request[1],
-        f"❌ Заявка №{request_id} отклонена.\n\n"
-        f"К сожалению, сейчас мы не можем принять её в работу.\n\n"
-        f"Причина:\n{message.text}\n\n"
-        f"Если вы считаете, что произошла ошибка, свяжитесь с оператором."
+        f"Ваша заявка №{request_id} была отклонена.\n\n"
+        f"Причина:\n{reason}\n\n"
+        "Если вы считаете, что заявка была отклонена ошибочно, свяжитесь с оператором."
     )
 
     await message.answer(
-        f"Заявка №{request_id} отклонена",
+        f"Заявка №{request_id} отклонена.\n\n"
+        "Теперь вы можете взять новую заявку в работу.",
         reply_markup=start_menu()
     )
     await state.clear()
@@ -292,7 +312,7 @@ async def all_requests(callback: CallbackQuery):
 
     if not requests:
         await callback.message.edit_text(
-            "Нет никаких заявок",
+            "Заявок пока нет.",
             reply_markup=start_menu()
         )
         await callback.answer()
@@ -316,23 +336,20 @@ async def all_requests_page(callback: CallbackQuery):
     try:
         page = int(callback.data.split(':')[1])
     except (ValueError, IndexError):
-        await callback.answer("Некорректная страница", show_alert=True)
+        await callback.answer("Не удалось определить страницу.", show_alert=True)
         return
 
     total = await admins_dao.get_all_requests_count()
     total_pages = (total + 5) // 6
 
     if page < 0 or page >= total_pages:
-        await callback.answer("Страница не найдена", show_alert=True)
+        await callback.answer("Такой страницы не существует.", show_alert=True)
         return
 
     requests = await admins_dao.get_all_requests_page(page, 6)
 
     if not requests:
-        await callback.answer(
-            "На этой странице нет заявок",
-            show_alert=True
-        )
+        await callback.answer("На этой странице нет заявок.", show_alert=True)
         return
 
     await callback.message.edit_text(
@@ -354,7 +371,7 @@ async def rejected_requests(callback: CallbackQuery):
 
     if not requests:
         await callback.message.edit_text(
-            "Отклоненных заявок пока нет",
+            "Отклонённых заявок пока нет.",
             reply_markup=start_menu()
         )
         await callback.answer()
@@ -378,23 +395,20 @@ async def rejected_requests_page(callback: CallbackQuery):
     try:
         page = int(callback.data.split(':')[1])
     except (ValueError, IndexError):
-        await callback.answer("Некорректная страница", show_alert=True)
+        await callback.answer("Не удалось определить страницу.", show_alert=True)
         return
 
     total = await admins_dao.get_rejected_requests_count()
     total_pages = (total + 5) // 6
 
     if page < 0 or page >= total_pages:
-        await callback.answer("Страница не найдена", show_alert=True)
+        await callback.answer("Такой страницы не существует.", show_alert=True)
         return
 
     requests = await admins_dao.get_rejected_requests_page(page, 6)
 
     if not requests:
-        await callback.answer(
-            "На этой странице нет заявок",
-            show_alert=True
-        )
+        await callback.answer("На этой странице нет заявок.", show_alert=True)
         return
 
     await callback.message.edit_text(
@@ -421,13 +435,14 @@ async def return_rejected(callback: CallbackQuery):
 
     if not success:
         await callback.answer(
-            "Заявка уже не находится среди отклоненных",
+            "Заявка уже не находится среди отклонённых.",
             show_alert=True
         )
         return
 
     await callback.message.edit_text(
-        f"Заявка №{request_id} снова добавлена в очередь",
+        f"Заявка №{request_id} снова добавлена в очередь.\n\n"
+        "Теперь её сможет взять любой администратор.",
         reply_markup=start_menu()
     )
     await callback.answer()
@@ -450,7 +465,7 @@ async def show_file(callback: CallbackQuery):
     file_type = request[8]
 
     if not file_id:
-        await callback.answer("У заявки нет файла", show_alert=True)
+        await callback.answer("В этой заявке нет прикреплённого файла.", show_alert=True)
         return
 
     caption = f"Файл заявки №{request[0]}"
@@ -467,7 +482,7 @@ async def show_file(callback: CallbackQuery):
         )
     else:
         await callback.answer(
-            "Неизвестный тип файла",
+            "Не удалось определить тип прикреплённого файла.",
             show_alert=True
         )
         return
