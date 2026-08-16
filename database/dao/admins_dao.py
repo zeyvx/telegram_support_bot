@@ -3,13 +3,13 @@ import aiosqlite
 
 async def get_all_users():
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute("SELECT * FROM users")
+        cursor = await conn.execute('SELECT * FROM users')
         return await cursor.fetchall()
 
 
 async def get_all_requests():
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute("SELECT * FROM requests ORDER BY id DESC")
+        cursor = await conn.execute('SELECT * FROM requests ORDER BY id ASC')
         return await cursor.fetchall()
 
 
@@ -17,7 +17,7 @@ async def get_all_requests_page(page, limit):
     async with aiosqlite.connect('database.db') as conn:
         offset = page * limit
         cursor = await conn.execute(
-            "SELECT * FROM requests ORDER BY id DESC LIMIT ? OFFSET ?",
+            'SELECT * FROM requests ORDER BY id ASC LIMIT ? OFFSET ?',
             (limit, offset)
         )
         return await cursor.fetchall()
@@ -25,7 +25,7 @@ async def get_all_requests_page(page, limit):
 
 async def get_all_requests_count():
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute("SELECT COUNT(*) FROM requests")
+        cursor = await conn.execute('SELECT COUNT(*) FROM requests')
         result = await cursor.fetchone()
         return result[0]
 
@@ -51,7 +51,7 @@ async def get_rejected_requests_page(page, limit):
     async with aiosqlite.connect('database.db') as conn:
         offset = page * limit
         cursor = await conn.execute(
-            "SELECT * FROM requests WHERE status = 'Отклонено' ORDER BY id DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM requests WHERE status = 'Отклонено' ORDER BY id ASC LIMIT ? OFFSET ?",
             (limit, offset)
         )
         return await cursor.fetchall()
@@ -91,7 +91,7 @@ async def complete_request(request_id, admin_id):
 async def get_request_by_id(request_id):
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute(
-            "SELECT * FROM requests WHERE id = ?",
+            'SELECT * FROM requests WHERE id = ?',
             (request_id,)
         )
         return await cursor.fetchone()
@@ -131,7 +131,7 @@ async def return_rejected_request(request_id):
 async def get_statistics():
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute(
-            "SELECT status, COUNT(*) FROM requests GROUP BY status"
+            'SELECT status, COUNT(*) FROM requests GROUP BY status'
         )
         return await cursor.fetchall()
 
