@@ -19,23 +19,23 @@ def format_text(request):
 
     text = (
         f"📋 Заявка №{request[0]}\n\n"
-        f"📂 Категория: {category}\n"
-        f"📝 Описание:\n\n{request[3]}\n\n"
-        f"📌 Статус: {request[5]}"
+        f"Категория: {category}\n"
+        f"Статус: {request[5]}\n\n"
+        f"Описание:\n{request[3]}"
     )
 
     if request[7]:
-        text += f"\n❌ Причина отказа: {request[7]}"
+        text += f"\n\nПричина отклонения:\n{request[7]}"
 
     if request[4]:
-        text += "\n📁 Прикреплён файл/фото"
+        text += "\n\n📎 К заявке прикреплён файл или фото."
 
     return text
 
 
 def format_short(request, number):
     category = categories.get(request[2], "Неизвестная категория")
-    return f"{number}. {category} - {request[5]}"
+    return f"{number}. {category} — {request[5]}"
 
 
 def format_requests_list(requests):
@@ -44,7 +44,8 @@ def format_requests_list(requests):
     for request in requests:
         category = categories.get(request[2], "Неизвестная категория")
         text += (
-            f"№{request[0]} — {category}\n"
+            f"№{request[0]}\n"
+            f"Категория: {category}\n"
             f"Статус: {request[5]}\n\n"
         )
 
@@ -52,12 +53,13 @@ def format_requests_list(requests):
 
 
 def format_rejected_list(requests):
-    text = "❌ Отклоненные заявки\n\n"
+    text = "❌ Отклонённые заявки\n\n"
 
     for request in requests:
         category = categories.get(request[2], "Неизвестная категория")
         text += (
-            f"№{request[0]} — {category}\n"
+            f"№{request[0]}\n"
+            f"Категория: {category}\n"
             f"Статус: {request[5]}\n\n"
         )
 
@@ -74,13 +76,13 @@ def format_stats(stats):
     total = sum(stats.values())
 
     text = (
-        f"📊 Статистика заявок\n\n"
+        "📊 Статистика заявок\n\n"
         f"Всего заявок: {total}\n\n"
-        f"🆕 Новые: {new_count}\n"
-        f"🔧 В работе: {in_progress}\n"
-        f"✅ Завершено: {completed}\n"
-        f"❌ Отклонено: {canceled}\n"
-        f"🚫 Отменено пользователем: {canceled_by_user}"
+        f"Новые: {new_count}\n"
+        f"В работе: {in_progress}\n"
+        f"Завершены: {completed}\n"
+        f"Отклонены: {canceled}\n"
+        f"Отменены пользователями: {canceled_by_user}"
     )
 
     return text
