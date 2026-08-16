@@ -18,9 +18,10 @@ async def start(message: Message, state: FSMContext):
     if message.from_user.id in ADMINS:
         await chat_utils.show(
             message.bot, message.chat.id,
-            "🛠 Добро пожаловать в панель администратора!\n\n"
-            "Здесь вы можете управлять заявками пользователей, просматривать обращения и отвечать на сообщения.\n\n"
-            "Выберите нужный раздел в меню ниже.",
+            "🛠 Панель администратора\n\n"
+            "Здесь вы можете принимать заявки, работать с обращениями пользователей "
+            "и просматривать статистику.\n\n"
+            "Выберите нужный раздел:",
             keyboards.admin.start_menu()
         )
         return
@@ -30,8 +31,9 @@ async def start(message: Message, state: FSMContext):
     if user:
         await chat_utils.show(
             message.bot, message.chat.id,
-            "Добро пожаловать в главное меню!\n\n"
-            "Выберите нужное действие:",
+            "Главное меню\n\n"
+            "Здесь вы можете отправить новую заявку, посмотреть свои обращения, "
+            "найти ответ на частый вопрос или связаться с оператором.",
             keyboards.user.main_keyboard()
         )
         return
@@ -39,9 +41,10 @@ async def start(message: Message, state: FSMContext):
     await state.set_state(Registration.waiting_contact)
     await chat_utils.show(
         message.bot, message.chat.id,
-        "Здравствуйте! 👋\n\n"
-        "Добро пожаловать в службу поддержки.\n"
-        "Для начала работы отправьте свой контакт, нажав кнопку ниже.",
+        "Здравствуйте!\n\n"
+        "Добро пожаловать в службу поддержки.\n\n"
+        "Перед началом работы отправьте свой контакт. "
+        "Он нужен для регистрации и связи с вами по заявкам.",
         keyboards.user.send_contact()
     )
 
@@ -49,7 +52,7 @@ async def start(message: Message, state: FSMContext):
 @router.message(Registration.waiting_contact, F.contact)
 async def save_user(message: Message, state: FSMContext):
     if message.contact.user_id != message.from_user.id:
-        await message.answer("Пожалуйста отправьте свой номер")
+        await message.answer("Пожалуйста, отправьте именно свой контакт.")
         return
 
     phone = message.contact.phone_number
@@ -57,22 +60,23 @@ async def save_user(message: Message, state: FSMContext):
 
     if not success:
         await message.answer(
-            "⚠️ Этот номер телефона уже зарегистрирован в системе.\n"
-            "Если это ошибка — свяжитесь с оператором."
+            "Этот номер телефона уже зарегистрирован в системе.\n\n"
+            "Если вы считаете, что это ошибка, свяжитесь с оператором."
         )
         return
 
     await state.clear()
 
     await message.answer(
-        "✅ Вы успешно зарегистрированы!",
+        "Регистрация успешно завершена.",
         reply_markup=ReplyKeyboardRemove()
     )
 
     await chat_utils.show(
         message.bot,
         message.chat.id,
-        "Добро пожаловать в главное меню!\n\nВыберите нужное действие:",
+        "Главное меню\n\n"
+        "Теперь вы можете отправить заявку или посмотреть свои обращения.",
         keyboards.user.main_keyboard()
     )
 
@@ -80,7 +84,7 @@ async def save_user(message: Message, state: FSMContext):
 @router.message(Registration.waiting_contact)
 async def invalid_contact(message: Message):
     await message.answer(
-        "Пожалуйста, отправьте контакт для регистрации",
+        "Для регистрации нужно отправить свой контакт.",
         reply_markup=keyboards.user.send_contact()
     )
 
@@ -89,18 +93,19 @@ async def invalid_contact(message: Message):
 async def faq(callback: CallbackQuery):
     text = (
         "❓ Часто задаваемые вопросы\n\n"
-        "📨 Как отправить заявку?\n"
-        "Нажмите «Отправить заявку», выберите подходящую категорию, "
-        "опишите проблему и при необходимости прикрепите фото или файл.\n\n"
-        "📋 Где посмотреть заявку?\n"
-        "Откройте раздел «Мои заявки». Там можно посмотреть ваши обращения "
-        "и их текущий статус.\n\n"
-        "⏱ Сколько ждать ответа?\n"
-        "Как только оператор возьмёт заявку в работу, он сможет ознакомиться "
-        "с проблемой и ответить вам.\n\n"
-        "❌ Можно ли отменить заявку?\n"
-        "Да, пока заявка находится в статусе «Новая».\n\n"
-        "Если вы не нашли ответ на свой вопрос, свяжитесь с оператором."
+        "Как отправить заявку?\n"
+        "Нажмите «Отправить заявку», выберите категорию, подробно опишите проблему "
+        "и при необходимости прикрепите фото или файл.\n\n"
+        "Где посмотреть свою заявку?\n"
+        "Откройте раздел «Мои заявки». Там отображаются все ваши обращения и их текущий статус.\n\n"
+        "Когда мне ответят?\n"
+        "После отправки заявка попадёт к операторам. Когда один из них возьмёт её в работу, "
+        "он сможет ознакомиться с описанием и отправить вам ответ.\n\n"
+        "Можно ли отменить заявку?\n"
+        "Да. Отменить заявку можно самостоятельно, пока она находится в статусе «Новая».\n\n"
+        "Что делать, если заявку отклонили?\n"
+        "В сообщении об отклонении будет указана причина. Если вы не согласны с решением, "
+        "свяжитесь с оператором."
     )
 
     await chat_utils.show(
@@ -116,7 +121,9 @@ async def faq(callback: CallbackQuery):
 async def operator(callback: CallbackQuery):
     await chat_utils.show(
         callback.bot, callback.message.chat.id,
-        f"Номер оператора: {OPERATOR_PHONE}",
+        f"Связаться с оператором\n\n"
+        f"Телефон: {OPERATOR_PHONE}\n\n"
+        "Если вопрос связан с вашей заявкой, сообщите оператору её номер.",
         keyboards.user.back_to_menu()
     )
     await callback.answer()
