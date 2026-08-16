@@ -15,7 +15,7 @@ def get_request_id(callback_data):
 
 
 def format_text(request):
-    category = categories.get(request[2], request[2])
+    category = categories.get(request[2], "Неизвестная категория")
 
     text = (
         f"📋 Заявка №{request[0]}\n\n"
@@ -34,7 +34,7 @@ def format_text(request):
 
 
 def format_short(request, number):
-    category = categories.get(request[2], request[2])
+    category = categories.get(request[2], "Неизвестная категория")
     return f"{number}. {category} - {request[5]}"
 
 
@@ -42,16 +42,8 @@ def format_requests_list(requests):
     text = "📋 Все заявки\n\n"
 
     for request in requests:
-        status = {
-            'Новая': '🟢',
-            'В работе': '🔵',
-            'Завершена': '✅',
-            'Отклонено': '❌',
-            'Отменена': '🚫'
-        }.get(request[5], '❔')
-
-        category = categories.get(request[2], request[2])
-        text += f"{request[0]} — {status} — {category}\n"
+        category = categories.get(request[2], "Неизвестная категория")
+        text += f"{request[0]} — {request[5]} — {category}\n"
 
     return text
 
@@ -60,8 +52,8 @@ def format_rejected_list(requests):
     text = "❌ Отклоненные заявки\n\n"
 
     for request in requests:
-        category = categories.get(request[2], request[2])
-        text += f"№{request[0]} — {category}\n"
+        category = categories.get(request[2], "Неизвестная категория")
+        text += f"№{request[0]} — {request[5]} — {category}\n"
 
     return text
 
