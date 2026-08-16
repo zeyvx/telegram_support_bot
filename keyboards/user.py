@@ -1,5 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 
+
 def main_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='Отправить заявку', callback_data='send_request'), InlineKeyboardButton(text='Мои заявки', callback_data='my_requests')],
@@ -7,6 +8,7 @@ def main_keyboard():
     ])
 
     return keyboard
+
 
 def problems_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -17,6 +19,7 @@ def problems_keyboard():
 
     return keyboard
 
+
 def skip():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='Пропустить', callback_data='skip')],
@@ -25,12 +28,14 @@ def skip():
 
     return keyboard
 
+
 def back_to_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='В меню', callback_data='back_to_menu')]
     ])
 
     return keyboard
+
 
 def request_navigation(current, total, request_id, status):
     buttons = []
@@ -49,6 +54,7 @@ def request_navigation(current, total, request_id, status):
         keyboard.append([InlineKeyboardButton(text='❌ Отменить', callback_data=f'cancel_own_request:{request_id}')])
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
 
 def send_contact():
     keyboard = ReplyKeyboardMarkup(keyboard=[

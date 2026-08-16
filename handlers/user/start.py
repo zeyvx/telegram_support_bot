@@ -1,14 +1,15 @@
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 import keyboards.user, keyboards.admin
 from database.dao import users_dao
-from config import OPERATOR_PHONE, ADMINS, NONE
+from config import OPERATOR_PHONE, ADMINS
 from states.registration import Registration
 from utils import chat_utils
 
 router = Router()
+
 
 @router.message(CommandStart())
 async def start(message: Message, state: FSMContext):
@@ -44,6 +45,7 @@ async def start(message: Message, state: FSMContext):
         keyboards.user.send_contact()
     )
 
+
 @router.message(Registration.waiting_contact, F.contact)
 async def save_user(message: Message, state: FSMContext):
     if message.contact.user_id != message.from_user.id:
@@ -63,10 +65,17 @@ async def save_user(message: Message, state: FSMContext):
     await state.clear()
 
     await message.answer(
-        "✅ Вы успешно зарегистрированы!\n\n"
-        "Для начала работы перезапустите бота, отправив команду /start.",
+        "✅ Вы успешно зарегистрированы!",
         reply_markup=ReplyKeyboardRemove()
     )
+
+    await chat_utils.show(
+        message.bot,
+        message.chat.id,
+        "Добро пожаловать в главное меню!\n\nВыберите нужное действие:",
+        keyboards.user.main_keyboard()
+    )
+
 
 @router.message(Registration.waiting_contact)
 async def invalid_contact(message: Message):
@@ -74,6 +83,7 @@ async def invalid_contact(message: Message):
         "Пожалуйста, отправьте контакт для регистрации",
         reply_markup=keyboards.user.send_contact()
     )
+
 
 @router.callback_query(F.data == 'faq')
 async def faq(callback: CallbackQuery):
@@ -89,6 +99,7 @@ async def faq(callback: CallbackQuery):
     )
     await chat_utils.show(callback.bot, callback.message.chat.id, text, keyboards.user.back_to_menu())
     await callback.answer()
+
 
 @router.callback_query(F.data == 'call_operator')
 async def operator(callback: CallbackQuery):

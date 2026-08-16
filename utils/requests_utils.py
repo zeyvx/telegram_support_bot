@@ -1,16 +1,21 @@
 categories = {
-        "tech": "Техническая",
-        "payment": "Оплата",
-        "delivery": "Доставка",
-        "order": "Заказ",
-        "another": "Другое"
-    }
+    "tech": "Техническая",
+    "payment": "Оплата",
+    "delivery": "Доставка",
+    "order": "Заказ",
+    "another": "Другое"
+}
+
+
+def get_request_id(callback_data):
+    try:
+        return int(callback_data.split(":", 1)[1])
+    except (IndexError, ValueError):
+        return None
+
 
 def format_text(request):
-    category = categories.get(
-        request[2],
-        request[2]
-    )
+    category = categories.get(request[2], request[2])
 
     text = (
         f"📋 Заявка №{request[0]}\n\n"
@@ -23,24 +28,17 @@ def format_text(request):
         text += f"\n❌ Причина отказа: {request[7]}"
 
     if request[4]:
-        text += f"\n📁 Прикреплён файл/фото"
+        text += "\n📁 Прикреплён файл/фото"
 
     return text
 
+
 def format_short(request, number):
-
-    category = categories.get(
-        request[2],
-        request[2]
-    )
-
-    return (
-        f"{number}. {category} - {request[5]}"
-    )
+    category = categories.get(request[2], request[2])
+    return f"{number}. {category} - {request[5]}"
 
 
 def format_stats(stats):
-
     new_count = stats.get('Новая', 0)
     in_progress = stats.get('В работе', 0)
     completed = stats.get('Завершена', 0)
@@ -48,7 +46,7 @@ def format_stats(stats):
     canceled_by_user = stats.get('Отменена', 0)
 
     total = sum(stats.values())
-    
+
     text = (
         f"📊 Статистика заявок\n\n"
         f"Всего заявок: {total}\n\n"

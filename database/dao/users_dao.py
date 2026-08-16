@@ -1,6 +1,7 @@
 import aiosqlite
 import sqlite3
 
+
 async def add_user(user_id, phone):
     try:
         async with aiosqlite.connect('database.db') as conn:
@@ -8,9 +9,10 @@ async def add_user(user_id, phone):
                 "INSERT INTO users(user_id, phone) VALUES (?, ?)", (user_id, phone))
             await conn.commit()
             return True
-    
+
     except sqlite3.IntegrityError:
         return False
+
 
 async def get_user(user_id):
     async with aiosqlite.connect('database.db') as conn:
@@ -20,19 +22,31 @@ async def get_user(user_id):
             return True
         return False
 
-async def add_request(user_id, category, request, file_id):
+
+async def add_request(user_id, category, request, file_id, file_type=None):
     async with aiosqlite.connect('database.db') as conn:
-        await conn.execute("INSERT INTO requests (user_id, category, request, file_id) VALUES (?,?,?,?)", (user_id, category, request, file_id))
+        await conn.execute(
+            "INSERT INTO requests (user_id, category, request, file_id, file_type) VALUES (?,?,?,?,?)",
+            (user_id, category, request, file_id, file_type)
+        )
         await conn.commit()
+
 
 async def get_my_requests(user_id):
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute("SELECT * FROM requests WHERE user_id = ?", (user_id,))
-
+        cursor = await conn.execute(
+            "SELECT * FROM requests WHERE user_id = ? ORDER BY id DESC",
+            (user_id,)
+        )
         return await cursor.fetchall()
+
 
 async def cancel_own_request(request_id, user_id):
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute("UPDATE requests SET status = 'Отменена' WHERE id = ? AND user_id = ? AND status = 'Новая'", (request_id, user_id))
+        cursor = await conn.execute(
+            "UPDATE requests SET status = 'Отменена' "
+            "WHERE id = ? AND user_id = ? AND status = 'Новая'",
+            (request_id, user_id)
+        )
         await conn.commit()
         return cursor.rowcount > 0

@@ -14,6 +14,7 @@ dp.include_router(requests)
 dp.include_router(admin)
 dp.include_router(admin_request)
 
+
 async def main():
     async with aiosqlite.connect("database.db") as db:
         await init_db(db)
@@ -23,6 +24,7 @@ async def main():
     print("Бот запустился...")
 
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     try:
