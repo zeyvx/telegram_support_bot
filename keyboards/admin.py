@@ -15,7 +15,12 @@ def start_menu():
 def request_actions_keyboard(request_id, status):
     keyboard = []
 
-    if status == 'В работе':
+    if status == 'Новая':
+        keyboard.append([
+            InlineKeyboardButton(text='📥 Взять в работу', callback_data=f'take_request:{request_id}')
+        ])
+
+    elif status == 'В работе':
         keyboard.append([
             InlineKeyboardButton(text='✅ Завершить', callback_data=f'complete_request:{request_id}'),
             InlineKeyboardButton(text='💬 Ответить', callback_data=f'reply_request:{request_id}')
