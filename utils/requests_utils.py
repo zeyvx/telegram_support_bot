@@ -43,7 +43,10 @@ def format_requests_list(requests):
 
     for request in requests:
         category = categories.get(request[2], "Неизвестная категория")
-        text += f"{request[0]} — {request[5]} — {category}\n"
+        text += (
+            f"№{request[0]} — {category}\n"
+            f"Статус: {request[5]}\n\n"
+        )
 
     return text
 
@@ -53,7 +56,10 @@ def format_rejected_list(requests):
 
     for request in requests:
         category = categories.get(request[2], "Неизвестная категория")
-        text += f"№{request[0]} — {request[5]} — {category}\n"
+        text += (
+            f"№{request[0]} — {category}\n"
+            f"Статус: {request[5]}\n\n"
+        )
 
     return text
 
