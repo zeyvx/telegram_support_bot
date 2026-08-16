@@ -3,8 +3,8 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from states.admin_reply import AdminReply
 from database.dao import admins_dao
-from keyboards.admin import start_menu, request_actions_keyboard, back_to_menu
-from utils.requests_utils import format_text
+from keyboards.admin import start_menu, request_actions_keyboard, back_to_menu, all_requests_keyboard, rejected_requests_keyboard
+from utils.requests_utils import format_text, format_requests_list, format_rejected_list
 from config import ADMINS
 
 router = Router()
@@ -70,7 +70,7 @@ async def open_request(callback: CallbackQuery):
 
     await callback.message.edit_text(
         text=format_text(request),
-        reply_markup=request_actions_keyboard(request_id)
+        reply_markup=request_actions_keyboard(request_id, request[5])
     )
     await callback.answer()
 
@@ -186,7 +186,6 @@ async def cancel_request(callback: CallbackQuery, state: FSMContext):
         return
 
     await state.update_data(request_id=request_id, admin_id=callback.from_user.id)
-
     await state.set_state(AdminReply.waiting_for_cancel_reason)
 
     await callback.message.edit_text(
@@ -238,14 +237,137 @@ async def get_cancel_answer(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    user_id = request[1]
-
     await message.bot.send_message(
-        user_id,
-        text=f'Заявка отклонена. Причина:\n\n{message.text}'
+        request[1],
+        f'❌ Заявка №{request_id} отклонена.\n\n'
+        f'К сожалению, мы не смогли принять её в работу.\n\n'
+        f'Причина:\n{message.text}\n\n'
+        f'Если вы считаете, что произошла ошибка, свяжитесь с оператором.'
     )
 
+    await message.answer(
+        f'Заявка №{request_id} отклонена',
+        reply_markup=start_menu()
+    )
     await state.clear()
+
+
+@router.callback_query(F.data == 'all_requests')
+async def all_requests(callback: CallbackQuery):
+    page = 0
+    requests = await admins_dao.get_all_requests_page(page, 6)
+    total = await admins_dao.get_all_requests_count()
+
+    if not requests:
+        await callback.message.edit_text(
+            'Нет никаких заявок',
+            reply_markup=start_menu()
+        )
+        await callback.answer()
+        return
+
+    total_pages = (total + 5) // 6
+
+    await callback.message.edit_text(
+        format_requests_list(requests),
+        reply_markup=all_requests_keyboard(page, total_pages, requests)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('all_requests_page:'))
+async def all_requests_page(callback: CallbackQuery):
+    page = int(callback.data.split(':')[1])
+    total = await admins_dao.get_all_requests_count()
+    total_pages = (total + 5) // 6
+
+    if page < 0 or page >= total_pages:
+        await callback.answer('Страница не найдена', show_alert=True)
+        return
+
+    requests = await admins_dao.get_all_requests_page(page, 6)
+
+    if not requests:
+        await callback.answer('На этой странице нет заявок', show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        format_requests_list(requests),
+        reply_markup=all_requests_keyboard(page, total_pages, requests)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == 'rejected_requests')
+async def rejected_requests(callback: CallbackQuery):
+    page = 0
+    requests = await admins_dao.get_rejected_requests_page(page, 6)
+    total = await admins_dao.get_rejected_requests_count()
+
+    if not requests:
+        await callback.message.edit_text(
+            'Отклоненных заявок пока нет',
+            reply_markup=start_menu()
+        )
+        await callback.answer()
+        return
+
+    total_pages = (total + 5) // 6
+
+    await callback.message.edit_text(
+        format_rejected_list(requests),
+        reply_markup=rejected_requests_keyboard(page, total_pages, requests)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('rejected_requests_page:'))
+async def rejected_requests_page(callback: CallbackQuery):
+    page = int(callback.data.split(':')[1])
+    total = await admins_dao.get_rejected_requests_count()
+    total_pages = (total + 5) // 6
+
+    if page < 0 or page >= total_pages:
+        await callback.answer('Страница не найдена', show_alert=True)
+        return
+
+    requests = await admins_dao.get_rejected_requests_page(page, 6)
+
+    if not requests:
+        await callback.answer('На этой странице нет заявок', show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        format_rejected_list(requests),
+        reply_markup=rejected_requests_keyboard(page, total_pages, requests)
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('return_rejected:'))
+async def return_rejected(callback: CallbackQuery):
+    if callback.from_user.id not in ADMINS:
+        await callback.answer("У вас нет доступа", show_alert=True)
+        return
+
+    request_id = int(callback.data.split(':')[1])
+    request = await admins_dao.get_request_by_id(request_id)
+
+    if request is None:
+        await callback.answer('Заявка не найдена', show_alert=True)
+        return
+
+    success = await admins_dao.return_rejected_request(request_id)
+
+    if not success:
+        await callback.answer('Заявка уже не находится среди отклоненных', show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        f'Заявка №{request_id} снова добавлена в очередь.',
+        reply_markup=start_menu()
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith('show_file:'))
@@ -255,7 +377,6 @@ async def show_file(callback: CallbackQuery):
         return
 
     request_id = int(callback.data.split(':')[1])
-
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
