@@ -17,7 +17,12 @@ async def take_request(callback: CallbackQuery):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     active_count = await admins_dao.get_admin_requests_count(callback.from_user.id)
 
     if active_count >= 3:
@@ -36,11 +41,16 @@ async def take_request(callback: CallbackQuery):
         )
         return
 
-    await callback.message.edit_text(
-        f"Заявка №{request_id} взята в работу.\n\n"
-        "Теперь она находится в разделе «Мои заявки».",
-        reply_markup=start_menu()
-    )
+    try:
+        await callback.message.edit_text(
+            f"Заявка №{request_id} взята в работу.\n\n"
+            "Теперь она находится в разделе «Мои заявки».",
+            reply_markup=start_menu()
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -50,7 +60,12 @@ async def complete_request(callback: CallbackQuery):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     success = await admins_dao.complete_request(request_id, callback.from_user.id)
 
     if not success:
@@ -72,11 +87,16 @@ async def complete_request(callback: CallbackQuery):
         "Спасибо, что обратились в службу поддержки."
     )
 
-    await callback.message.edit_text(
-        f"Заявка №{request_id} успешно завершена.\n\n"
-        "Теперь вы можете взять новую заявку в работу.",
-        reply_markup=start_menu()
-    )
+    try:
+        await callback.message.edit_text(
+            f"Заявка №{request_id} успешно завершена.\n\n"
+            "Теперь вы можете взять новую заявку в работу.",
+            reply_markup=start_menu()
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -86,17 +106,27 @@ async def open_request(callback: CallbackQuery):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
         await callback.answer("Заявка не найдена", show_alert=True)
         return
 
-    await callback.message.edit_text(
-        text=format_text(request),
-        reply_markup=request_actions_keyboard(request_id, request[5])
-    )
+    try:
+        await callback.message.edit_text(
+            text=format_text(request),
+            reply_markup=request_actions_keyboard(request_id, request[5], request[4])
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -106,7 +136,12 @@ async def return_request(callback: CallbackQuery):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     success = await admins_dao.return_request(request_id, callback.from_user.id)
 
     if not success:
@@ -116,11 +151,16 @@ async def return_request(callback: CallbackQuery):
         )
         return
 
-    await callback.message.edit_text(
-        f"Заявка №{request_id} возвращена в очередь.\n\n"
-        "Теперь её снова сможет взять любой свободный администратор.",
-        reply_markup=start_menu()
-    )
+    try:
+        await callback.message.edit_text(
+            f"Заявка №{request_id} возвращена в очередь.\n\n"
+            "Теперь её снова сможет взять любой свободный администратор.",
+            reply_markup=start_menu()
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -130,7 +170,12 @@ async def reply_request(callback: CallbackQuery, state: FSMContext):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
@@ -154,10 +199,15 @@ async def reply_request(callback: CallbackQuery, state: FSMContext):
     await state.update_data(request_id=request_id)
     await state.set_state(AdminReply.waiting_for_reply)
 
-    await callback.message.edit_text(
-        f"Напишите ответ для пользователя по заявке №{request_id}:",
-        reply_markup=back_to_menu()
-    )
+    try:
+        await callback.message.edit_text(
+            f"Напишите ответ для пользователя по заявке №{request_id}:",
+            reply_markup=back_to_menu()
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -207,7 +257,12 @@ async def cancel_request(callback: CallbackQuery, state: FSMContext):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
@@ -234,11 +289,16 @@ async def cancel_request(callback: CallbackQuery, state: FSMContext):
     )
     await state.set_state(AdminReply.waiting_for_cancel_reason)
 
-    await callback.message.edit_text(
-        f"Укажите причину отклонения заявки №{request_id}:\n\n"
-        "Эта причина будет отправлена пользователю.",
-        reply_markup=back_to_menu()
-    )
+    try:
+        await callback.message.edit_text(
+            f"Укажите причину отклонения заявки №{request_id}:\n\n"
+            "Эта причина будет отправлена пользователю.",
+            reply_markup=back_to_menu()
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -313,19 +373,29 @@ async def all_requests(callback: CallbackQuery):
     total = await admins_dao.get_all_requests_count()
 
     if not requests:
-        await callback.message.edit_text(
-            "Заявок пока нет.",
-            reply_markup=start_menu()
-        )
+        try:
+            await callback.message.edit_text(
+                "Заявок пока нет.",
+                reply_markup=start_menu()
+            )
+        except TelegramBadRequest as e:
+            if "message is not modified" not in str(e):
+                raise
+
         await callback.answer()
         return
 
     total_pages = (total + 5) // 6
 
-    await callback.message.edit_text(
-        format_requests_list(requests),
-        reply_markup=all_requests_keyboard(page, total_pages, requests)
-    )
+    try:
+        await callback.message.edit_text(
+            format_requests_list(requests),
+            reply_markup=all_requests_keyboard(page, total_pages, requests)
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -446,7 +516,12 @@ async def return_rejected(callback: CallbackQuery):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
@@ -462,11 +537,16 @@ async def return_rejected(callback: CallbackQuery):
         )
         return
 
-    await callback.message.edit_text(
-        f"Заявка №{request_id} снова добавлена в очередь.\n\n"
-        "Теперь её сможет взять любой администратор.",
-        reply_markup=start_menu()
-    )
+    try:
+        await callback.message.edit_text(
+            f"Заявка №{request_id} снова добавлена в очередь.\n\n"
+            "Теперь её сможет взять любой администратор.",
+            reply_markup=start_menu()
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -476,7 +556,12 @@ async def show_file(callback: CallbackQuery):
         await callback.answer("У вас нет доступа", show_alert=True)
         return
 
-    request_id = int(callback.data.split(':')[1])
+    try:
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer("Не удалось определить заявку.", show_alert=True)
+        return
+
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
@@ -510,5 +595,3 @@ async def show_file(callback: CallbackQuery):
         return
 
     await callback.answer()
-
-

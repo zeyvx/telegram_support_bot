@@ -36,7 +36,7 @@ async def find_request(message: Message, command: CommandObject):
         await message.answer(f"Заявка №{request_id} не найдена.")
         return
 
-    await message.answer(text= requests_utils.format_find(request), parse_mode='HTML')
+    await message.answer(text=requests_utils.format_find(request), parse_mode='HTML')
 
 
 @router.callback_query(F.data == 'new_requests')
@@ -59,16 +59,20 @@ async def new_requests(callback: CallbackQuery):
     current = 0
     request = requests[current]
 
-    await callback.message.edit_text(
-        text=requests_utils.format_text(request),
-        reply_markup=navigation.get_navigation(
-            current=current,
-            total=len(requests),
-            prefix='new_requests',
-            request_id=request[0],
-            file_id=request[4]
+    try:
+        await callback.message.edit_text(
+            text=requests_utils.format_text(request),
+            reply_markup=navigation.get_navigation(
+                current=current,
+                total=len(requests),
+                prefix='new_requests',
+                request_id=request[0],
+                file_id=request[4]
+            )
         )
-    )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
 
     await callback.answer()
 

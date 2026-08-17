@@ -20,7 +20,7 @@ def start_menu():
     return keyboard
 
 
-def request_actions_keyboard(request_id, status):
+def request_actions_keyboard(request_id, status, request=None):
     keyboard = []
 
     if status == 'Новая':
@@ -42,18 +42,30 @@ def request_actions_keyboard(request_id, status):
                 callback_data=f'reply_request:{request_id}'
             )
         ])
+
         keyboard.append([
             InlineKeyboardButton(
                 text='🔄 Вернуть в очередь',
                 callback_data=f'return_request:{request_id}'
             )
         ])
+
         keyboard.append([
             InlineKeyboardButton(
                 text='❌ Отклонить',
                 callback_data=f'cancel_request:{request_id}'
             )
         ])
+
+        if request and request[4]:
+            keyboard.append([
+                InlineKeyboardButton(
+                    text='📎 Посмотреть файл',
+                    callback_data=f'show_file:{request_id}'
+                )
+            ])
+
+
 
     elif status == 'Отклонено':
         keyboard.append([
