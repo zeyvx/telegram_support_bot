@@ -36,29 +36,7 @@ async def find_request(message: Message, command: CommandObject):
         await message.answer(f"Заявка №{request_id} не найдена.")
         return
 
-    category = requests_utils.categories.get(
-        request[2],
-        "Неизвестная категория"
-    )
-
-    file_id = request[4] if request[4] else "Нет"
-    admin_id = request[6] if request[6] else "Не назначен"
-    reason = request[7] if request[7] else "Нет"
-    file_type = request[8] if request[8] else "Нет"
-
-    text = (
-        f"Заявка №{request[0]}\n\n"
-        f"Пользователь: {request[1]}\n"
-        f"Категория: {category}\n"
-        f"Описание:\n{request[3]}\n\n"
-        f"Файл: {file_id}\n"
-        f"Тип файла: {file_type}\n"
-        f"Статус: {request[5]}\n"
-        f"Администратор: {admin_id}\n"
-        f"Причина отказа: {reason}"
-    )
-
-    await message.answer(text)
+    await message.answer(text= requests_utils.format_find(request), parse_mode='HTML')
 
 
 @router.callback_query(F.data == 'new_requests')

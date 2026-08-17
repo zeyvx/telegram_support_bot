@@ -86,3 +86,45 @@ def format_stats(stats):
     )
 
     return text
+
+def format_find(request):
+    category = categories.get(
+            request[2],
+            "Неизвестная категория"
+        )
+    
+    file_id = "📎 Прикреплён" if request[4] else "❌ Отсутствует"
+    admin_id = f"👤 {request[6]}" if request[6] else "⏳ Не назначен"
+    reason = request[7] if request[7] else "—"
+    file_type = request[8] if request[8] else "—"
+
+    text = (
+        f"📋 <b>Заявка №{request[0]}</b>\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+
+        f"👤 <b>Пользователь</b>\n"
+        f"└ {request[1]}\n\n"
+
+        f"📂 <b>Категория</b>\n"
+        f"└ {category}\n\n"
+
+        f"📝 <b>Описание</b>\n"
+        f"└ {request[3]}\n\n"
+
+        f"📎 <b>Вложение</b>\n"
+        f"└ {file_id}\n"
+        f"└ Тип: {file_type}\n\n"
+
+        f"📊 <b>Статус</b>\n"
+        f"└ {request[5]}\n\n"
+
+        f"🛡 <b>Администратор</b>\n"
+        f"└ {admin_id}\n\n"
+
+        f"🚫 <b>Причина отказа</b>\n"
+        f"└ {reason}\n\n"
+
+        f"━━━━━━━━━━━━━━━━━━\n"
+    )
+
+    return text
