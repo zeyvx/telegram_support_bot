@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from states.request_send import SendRequest
 from keyboards import user, admin
-from database.dao import users_dao
+from database.dao import users_dao, admins_dao
 from utils import requests_utils, chat_utils
 from config import ADMINS
 
@@ -256,3 +256,21 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext):
             user.main_keyboard()
         )
     await callback.answer()
+
+@router.callback_query(F.data.startswith('helped:'))
+async def helped(callback: CallbackQuery):
+    request_id = int(callback.data.split(':')[1])
+
+    success = admins_dao.complete_request(request_id)
+
+    if not success:
+        await chat_utils.show(callback.bot,
+                                  callback.message.chat.id,
+                                  "Что то пошло не так",
+                                  reply_markup=user.main_keyboard())
+        return
+
+    await chat_utils.show(callback.bot,
+                          callback.message.chat.id,
+                          "Заявка успешно закрыта!",
+                          reply_markup=user.main_keyboard())

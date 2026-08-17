@@ -88,7 +88,7 @@ async def take_request(request_id, admin_id):
         return cursor.rowcount > 0
 
 
-async def complete_request(request_id, admin_id):
+async def complete_request(request_id, admin_id = None):
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute(
             "UPDATE requests SET status = 'Завершена' "

@@ -184,3 +184,12 @@ def back_to_menu():
     ])
 
     return keyboard
+
+
+def help_buttons(request_id):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='Да, помогло', callback_data=f'helped:{request_id}'),
+        InlineKeyboardButton(text='Нет, не помогло', callback_data=f'not_helped:{request_id}')]
+    ])
+
+    return keyboard

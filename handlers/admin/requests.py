@@ -3,7 +3,7 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from states.admin_reply import AdminReply
 from database.dao import admins_dao
-from keyboards.admin import start_menu, request_actions_keyboard, back_to_menu, all_requests_keyboard, rejected_requests_keyboard
+from keyboards.admin import start_menu, request_actions_keyboard, back_to_menu, all_requests_keyboard, rejected_requests_keyboard, help_buttons
 from utils.requests_utils import format_text, format_requests_list, format_rejected_list
 from config import ADMINS
 
@@ -189,7 +189,8 @@ async def get_admin_reply(message: Message, state: FSMContext):
 
     await message.bot.send_message(
         request[1],
-        f"Ответ по вашей заявке №{request_id}:\n\n{message.text}"
+        f"Ответ по вашей заявке №{request_id}:\n\n{message.text}",
+        reply_markup=help_buttons(request_id)
     )
 
     await message.answer(
@@ -488,3 +489,5 @@ async def show_file(callback: CallbackQuery):
         return
 
     await callback.answer()
+
+
