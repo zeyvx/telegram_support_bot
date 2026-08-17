@@ -6,6 +6,7 @@ from database.dao import admins_dao
 from keyboards.admin import start_menu, request_actions_keyboard, back_to_menu, all_requests_keyboard, rejected_requests_keyboard, help_buttons
 from utils.requests_utils import format_text, format_requests_list, format_rejected_list
 from config import ADMINS
+from aiogram.exceptions import TelegramBadRequest
 
 router = Router()
 
@@ -371,19 +372,29 @@ async def rejected_requests(callback: CallbackQuery):
     total = await admins_dao.get_rejected_requests_count()
 
     if not requests:
-        await callback.message.edit_text(
-            "Отклонённых заявок пока нет.",
-            reply_markup=start_menu()
-        )
+        try:
+            await callback.message.edit_text(
+                "Отклонённых заявок пока нет.",
+                reply_markup=start_menu()
+            )
+        except TelegramBadRequest as e:
+            if "message is not modified" not in str(e):
+                raise
+
         await callback.answer()
         return
 
     total_pages = (total + 5) // 6
 
-    await callback.message.edit_text(
-        format_rejected_list(requests),
-        reply_markup=rejected_requests_keyboard(page, total_pages, requests)
-    )
+    try:
+        await callback.message.edit_text(
+            format_rejected_list(requests),
+            reply_markup=rejected_requests_keyboard(page, total_pages, requests)
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 

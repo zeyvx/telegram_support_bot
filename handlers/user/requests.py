@@ -278,10 +278,7 @@ async def helped(callback: CallbackQuery):
                                   "Что-то пошло не так",
                                   reply_markup=user.main_keyboard())
         return
-
-    await chat_utils.show(callback.bot,
-                          callback.message.chat.id,
-                          "Заявка успешно закрыта!",
-                          reply_markup=user.main_keyboard())
+    
+    await callback.message.edit_text(f"Заявка №{request_id} успешно закрыта", reply_markup=user.main_keyboard())
 
     await callback.answer()
