@@ -261,7 +261,7 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext):
 async def helped(callback: CallbackQuery):
     request_id = int(callback.data.split(':')[1])
 
-    success = admins_dao.complete_request(request_id)
+    success = await admins_dao.complete_request(request_id)
 
     if not success:
         await chat_utils.show(callback.bot,
@@ -274,3 +274,5 @@ async def helped(callback: CallbackQuery):
                           callback.message.chat.id,
                           "Заявка успешно закрыта!",
                           reply_markup=user.main_keyboard())
+
+    await callback.answer()
