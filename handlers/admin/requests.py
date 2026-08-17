@@ -354,10 +354,15 @@ async def all_requests_page(callback: CallbackQuery):
         await callback.answer("На этой странице нет заявок.", show_alert=True)
         return
 
-    await callback.message.edit_text(
-        format_requests_list(requests),
-        reply_markup=all_requests_keyboard(page, total_pages, requests)
-    )
+    try:
+        await callback.message.edit_text(
+            format_requests_list(requests),
+            reply_markup=all_requests_keyboard(page, total_pages, requests)
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
@@ -423,10 +428,15 @@ async def rejected_requests_page(callback: CallbackQuery):
         await callback.answer("На этой странице нет заявок.", show_alert=True)
         return
 
-    await callback.message.edit_text(
-        format_rejected_list(requests),
-        reply_markup=rejected_requests_keyboard(page, total_pages, requests)
-    )
+    try:
+        await callback.message.edit_text(
+            format_rejected_list(requests),
+            reply_markup=rejected_requests_keyboard(page, total_pages, requests)
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
+
     await callback.answer()
 
 
