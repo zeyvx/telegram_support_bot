@@ -260,13 +260,22 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith('helped:'))
 async def helped(callback: CallbackQuery):
     request_id = int(callback.data.split(':')[1])
+    request = await admins_dao.get_request_by_id(request_id)
+
+    if request is None:
+        await callback.answer("Заявка не найдена", show_alert=True)
+        return
+
+    if callback.from_user.id != request[1]:
+        await callback.answer("Эта заявка не принадлежит вам", show_alert=True)
+        return
 
     success = await admins_dao.complete_request(request_id)
 
     if not success:
         await chat_utils.show(callback.bot,
                                   callback.message.chat.id,
-                                  "Что то пошло не так",
+                                  "Что-то пошло не так",
                                   reply_markup=user.main_keyboard())
         return
 
