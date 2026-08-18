@@ -58,7 +58,6 @@ async def init_db(conn):
     )
     """)
 
-    # Migrate databases created by older versions of the bot.
     await _add_column(conn, 'users', 'language', "TEXT NOT NULL DEFAULT 'ru'")
     await _add_column(conn, 'requests', 'created_at', 'TEXT')
     await _add_column(conn, 'requests', 'completed_at', 'TEXT')
@@ -67,5 +66,9 @@ async def init_db(conn):
         "UPDATE requests SET created_at = COALESCE(created_at, datetime('now')) "
         "WHERE created_at IS NULL"
     )
+
+    await conn.execute("CREATE INDEX IF NOT EXISTS idx_requests_admin_status ON requests(admin_id, status)")
+    await conn.execute("CREATE INDEX IF NOT EXISTS idx_requests_completed_at ON requests(completed_at)")
+    await conn.execute("CREATE INDEX IF NOT EXISTS idx_ratings_admin ON ratings(admin_id)")
 
     await conn.commit()
