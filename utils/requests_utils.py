@@ -1,12 +1,6 @@
 from languages import get_text
 
-categories = {
-    'tech': 'Техническая',
-    'payment': 'Оплата',
-    'delivery': 'Доставка',
-    'order': 'Заказ',
-    'another': 'Другое'
-}
+categories = {'tech': 'Техническая', 'payment': 'Оплата', 'delivery': 'Доставка', 'order': 'Заказ', 'another': 'Другое'}
 
 
 def get_request_id(callback_data):
@@ -18,12 +12,8 @@ def get_request_id(callback_data):
 
 def format_text(request, language='ru'):
     category = get_text(language, 'categories').get(request[2], 'Неизвестная категория')
-    text = (
-        f'📋 Заявка №{request[0]}\n\n'
-        f'Категория: {category}\n'
-        f'Статус: {request[5]}\n\n'
-        f'Описание:\n{request[3]}'
-    )
+    status = get_text(language, 'statuses').get(request[5], request[5])
+    text = f'📋 Заявка №{request[0]}\n\nКатегория: {category}\nСтатус: {status}\n\nОписание:\n{request[3]}'
     if request[7]:
         text += f'\n\nПричина отклонения:\n{request[7]}'
     if request[4]:
@@ -53,20 +43,15 @@ def format_rejected_list(requests):
 
 
 def format_stats(stats):
-    new_count = stats.get('Новая', 0)
-    in_progress = stats.get('В работе', 0)
-    completed = stats.get('Завершена', 0)
-    canceled = stats.get('Отклонено', 0)
-    canceled_by_user = stats.get('Отменена', 0)
     total = sum(stats.values())
     return (
         '📊 Статистика заявок\n\n'
-        f'Всего заявок: {total}\n\n'
-        f'Новые: {new_count}\n'
-        f'В работе: {in_progress}\n'
-        f'Завершены: {completed}\n'
-        f'Отклонены: {canceled}\n'
-        f'Отменены пользователями: {canceled_by_user}'
+        f"Всего заявок: {total}\n\n"
+        f"Новые: {stats.get('Новая', 0)}\n"
+        f"В работе: {stats.get('В работе', 0)}\n"
+        f"Завершены: {stats.get('Завершена', 0)}\n"
+        f"Отклонены: {stats.get('Отклонено', 0)}\n"
+        f"Отменены пользователями: {stats.get('Отменена', 0)}"
     )
 
 
@@ -87,15 +72,15 @@ def format_admin_stats(stats, rank, total_ranked):
 def format_admin_ranking(rows):
     if not rows:
         return '🏆 Рейтинг администраторов\n\nПока нет оценок от пользователей.'
-
     lines = ['🏆 Рейтинг администраторов', '']
     medals = ['🥇', '🥈', '🥉']
     for position, row in enumerate(rows, 1):
         _, name, avg_rating, rating_count, processed = row
         medal = medals[position - 1] if position <= 3 else f'{position}.'
-        average = f'{avg_rating:.2f}' if rating_count else '—'
-        lines.append(f'{medal} {name} — ⭐ {average} ({rating_count} оценок) — {processed} заявок')
-    return '\n'.join(lines)
+        if rating_count == 0:
+            continue
+        lines.append(f'{medal} {name} — ⭐ {avg_rating:.2f} ({rating_count} оценок) — {processed} заявок')
+    return '\n'.join(lines) if len(lines) > 2 else '🏆 Рейтинг администраторов\n\nПока нет оценок от пользователей.'
 
 
 def format_find(request):
@@ -105,8 +90,7 @@ def format_find(request):
     reason = request[7] if request[7] else '—'
     file_type = request[8] if request[8] else '—'
     return (
-        f'📋 <b>Заявка №{request[0]}</b>\n'
-        f'━━━━━━━━━━━━━━━━━━\n\n'
+        f'📋 <b>Заявка №{request[0]}</b>\n━━━━━━━━━━━━━━━━━━\n\n'
         f'👤 <b>Пользователь</b>\n└ {request[1]}\n\n'
         f'📂 <b>Категория</b>\n└ {category}\n\n'
         f'📝 <b>Описание</b>\n└ {request[3]}\n\n'
@@ -114,5 +98,5 @@ def format_find(request):
         f'📊 <b>Статус</b>\n└ {request[5]}\n\n'
         f'🛡 <b>Администратор</b>\n└ {admin_id}\n\n'
         f'🚫 <b>Причина отказа</b>\n└ {reason}\n\n'
-        f'━━━━━━━━━━━━━━━━━━\n'
+        '━━━━━━━━━━━━━━━━━━\n'
     )
