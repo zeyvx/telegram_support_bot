@@ -6,8 +6,7 @@ async def init_db(conn):
 
     await conn.execute("""
 CREATE TABLE IF NOT EXISTS users(
-                        user_id INTEGER PRIMARY KEY,
-                        phone TEXT UNIQUE
+                        user_id INTEGER PRIMARY KEY
                         )
                         """)
 

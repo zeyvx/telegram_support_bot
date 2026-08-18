@@ -5,6 +5,7 @@ from states.request_send import SendRequest
 from keyboards import user, admin
 from database.dao import users_dao, admins_dao
 from utils import requests_utils, chat_utils
+from states.reasnwer_admin import ReAnswer
 
 router = Router()
 
@@ -281,3 +282,32 @@ async def helped(callback: CallbackQuery):
     await callback.message.edit_text(f"Заявка №{request_id} успешно закрыта", reply_markup=user.main_keyboard())
 
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith('not_helped:'))
+async def not_helped(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(request_id = int(callback.data.split(':')[1]))
+    await state.set_state(ReAnswer.answer)
+
+    await callback.message.edit_text("Уточните что именно вам не помогло")
+    await callback.answer()
+
+@router.message(ReAnswer.answer, F.text)
+async def user_request_text(message: Message, state: FSMContext):
+    await state.update_data(request_text = message.text)
+
+    data = await state.get_data()
+
+    request_id = data.get('request_id')
+    request_text = data.get('request_text')
+
+    request = await admins_dao.get_request_by_id(request_id)
+
+    text = (
+        f"Ответ на ваше сообщение по заявке №{request[0]}:"
+        f"\n\n{request_text}"
+    )
+
+    admin_id = request[6]
+
+    await message.bot.send_message(admin_id, text)

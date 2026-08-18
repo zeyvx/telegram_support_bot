@@ -2,11 +2,11 @@ import aiosqlite
 import sqlite3
 
 
-async def add_user(user_id, phone):
+async def add_user(user_id):
     try:
         async with aiosqlite.connect('database.db') as conn:
             await conn.execute(
-                "INSERT INTO users(user_id, phone) VALUES (?, ?)", (user_id, phone))
+                "INSERT OR IGNORE INTO users(user_id) VALUES (?)", (user_id,))
             await conn.commit()
             return True
 
