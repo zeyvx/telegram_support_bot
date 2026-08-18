@@ -35,7 +35,7 @@ def request_actions_keyboard(request_id, status, request=None):
         keyboard.append([InlineKeyboardButton(text='📥 Взять в работу', callback_data=f'take_request:{request_id}')])
     elif status == 'В работе':
         keyboard.append([
-            InlineKeyboardButton(text='✅ Завершить', callback_data=f'complete_request:{request_id}'),
+            InlineKeyboardButton(text='✅ Завершить', callback_data=f'finish_request:{request_id}'),
             InlineKeyboardButton(text='💬 Ответить', callback_data=f'reply_request:{request_id}')
         ])
         keyboard.append([InlineKeyboardButton(text='🔄 Вернуть в очередь', callback_data=f'return_request:{request_id}')])
