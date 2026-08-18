@@ -5,15 +5,22 @@ from aiogram.filters import Command, CommandObject
 import database.dao.admins_dao as admins_dao
 from keyboards import navigation, admin
 from utils import requests_utils
-from config import ADMINS
+from config import SENIOR_ADMIN_PRIORITY, SUPER_ADMIN_ID, MODERATOR_PRIORITY, ADMIN_PRIORITY
+from aiogram.fsm.context import FSMContext
+from states.add_admin import AddAdmin
 
 router = Router()
 
 
+async def has_permission(admin_id, required_priority):
+    priority = await admins_dao.get_admin_priority(admin_id)
+    return priority >= required_priority
+
+
 @router.message(Command('find'))
 async def find_request(message: Message, command: CommandObject):
-    if message.from_user.id not in ADMINS:
-        await message.answer("У вас нет доступа к этой команде.")
+    if not await admins_dao.is_admin(message.from_user.id):
+        await message.answer("У вас нет доступа")
         return
 
     if not command.args:
@@ -41,6 +48,10 @@ async def find_request(message: Message, command: CommandObject):
 
 @router.callback_query(F.data == 'new_requests')
 async def new_requests(callback: CallbackQuery):
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer("У вас нет доступа", show_alert=True)
+        return
+
     requests = await admins_dao.get_new_requests()
 
     if not requests:
@@ -79,6 +90,10 @@ async def new_requests(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("new_requests_page:"))
 async def new_request_page(callback: CallbackQuery):
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer("У вас нет доступа", show_alert=True)
+        return
+
     try:
         page = int(callback.data.split(":")[1])
     except (ValueError, IndexError):
@@ -117,6 +132,10 @@ async def new_request_page(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'my_works')
 async def my_works(callback: CallbackQuery):
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer("У вас нет доступа", show_alert=True)
+        return
+
     my_requests = await admins_dao.get_my_admin_requests(callback.from_user.id)
 
     if not my_requests:
@@ -153,6 +172,10 @@ async def my_works(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('my_works_page:'))
 async def my_works_page(callback: CallbackQuery):
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer("У вас нет доступа", show_alert=True)
+        return
+
     try:
         page = int(callback.data.split(':')[1])
     except (ValueError, IndexError):
@@ -189,6 +212,13 @@ async def my_works_page(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'statistic')
 async def statistic(callback: CallbackQuery):
+    if not await has_permission(
+        callback.from_user.id,
+        SENIOR_ADMIN_PRIORITY
+    ):
+        await callback.answer("У вас нет прав", show_alert=True)
+        return
+
     stats = dict(await admins_dao.get_statistics())
 
     text = requests_utils.format_stats(stats)
@@ -208,3 +238,107 @@ async def statistic(callback: CallbackQuery):
 @router.callback_query(F.data == 'nothing')
 async def nothing(callback: CallbackQuery):
     await callback.answer()
+
+
+@router.message(Command("add_admin"))
+async def add_admin(message: Message, command: CommandObject, state: FSMContext):
+    if message.from_user.id != SUPER_ADMIN_ID:
+        await message.answer("У вас нет прав.")
+        return
+
+    if not command.args:
+        await message.answer(
+            "Укажите Telegram ID администратора.\n\n"
+            "Пример:\n"
+            "/add_admin 123456789"
+        )
+        return
+
+    try:
+        admin_id = int(command.args.strip())
+    except ValueError:
+        await message.answer("Telegram ID должен быть числом.")
+        return
+
+    await state.update_data(admin_id = admin_id)
+    await state.set_state(AddAdmin.admin_role)
+
+    await message.answer(
+        "Выберите роль админа",
+        reply_markup=admin.admin_roles()
+    )
+
+
+@router.callback_query(F.data.in_({'admin', 'senior_admin', 'moderator'}))
+async def select_admin_role(callback: CallbackQuery, state: FSMContext):
+    roles = {
+        'admin': 'Админ',
+        'senior_admin': 'Старший админ',
+        'moderator': 'Модератор'
+    }
+
+    role = roles.get(callback.data)
+
+    if role is None:
+        await callback.answer("Неизвестная роль.", show_alert=True)
+        return
+
+    await state.update_data(admin_role=callback.data)
+    await state.set_state(AddAdmin.admin_name)
+
+    await callback.message.edit_text(
+        f"Выбрана роль: {role}\n\n"
+        "Теперь введите имя администратора:"
+    )
+
+    await callback.answer()
+
+
+@router.message(AddAdmin.admin_name, F.text)
+async def admin_name(message: Message, state: FSMContext):
+    await state.update_data(admin_name=message.text)
+
+    data = await state.get_data()
+
+    admin_id = data.get('admin_id')
+    admin_role = data.get('admin_role')
+    admin_name = data.get('admin_name')
+
+    priorities = {
+        'admin': ADMIN_PRIORITY,
+        'senior_admin': SENIOR_ADMIN_PRIORITY,
+        'moderator': MODERATOR_PRIORITY
+    }
+
+    priority = priorities.get(admin_role)
+
+    if not admin_id or not admin_role or not admin_name or priority is None:
+        await message.answer("Не удалось получить данные администратора.")
+        await state.clear()
+        return
+
+    success = await admins_dao.add_admin(
+        admin_id,
+        admin_role,
+        admin_name,
+        priority
+    )
+
+    if not success:
+        await message.answer(
+            "Не удалось добавить администратора.\n\n"
+            "Возможно, этот пользователь уже является администратором."
+        )
+        await state.clear()
+        return
+
+    await message.answer(
+        "Администратор успешно добавлен.\n\n"
+        f"ID: {admin_id}\n"
+        f"Имя: {admin_name}\n"
+        f"Роль: {admin_role}\n"
+        f"Приоритет: {priority}"
+        ,reply_markup=admin.start_menu()
+    )
+
+    await state.clear()

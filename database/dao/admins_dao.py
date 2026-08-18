@@ -1,5 +1,5 @@
 import aiosqlite
-
+from config import SUPER_ADMIN_ID
 
 async def get_all_users():
     async with aiosqlite.connect('database.db') as conn:
@@ -163,3 +163,53 @@ async def cancel_request(request_id, admin_id, reason):
         )
         await conn.commit()
         return cursor.rowcount > 0
+
+
+async def get_admin_priority(admin_id):
+    if admin_id == SUPER_ADMIN_ID:
+        return 4
+
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            "SELECT priority FROM admins WHERE admin_id = ?",
+            (admin_id,)
+        )
+
+        admin = await cursor.fetchone()
+
+        if admin is None:
+            return 0
+
+        return admin[0]
+
+
+async def add_admin(admin_id, admin_role, admin_name, priority):
+    async with aiosqlite.connect('database.db') as conn:
+        try:
+            await conn.execute(
+                """
+                INSERT INTO admins (admin_id, admin_role, admin_name, priority)
+                VALUES (?, ?, ?, ?)
+                """,
+                (admin_id, admin_role, admin_name, priority)
+            )
+            await conn.commit()
+            return True
+        except aiosqlite.IntegrityError:
+            return False
+
+
+async def is_admin(admin_id):
+    if admin_id == SUPER_ADMIN_ID:
+        return True
+
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            "SELECT * FROM admins WHERE admin_id = ?",
+            (admin_id,)
+        )
+
+        admin = await cursor.fetchone()
+
+        return admin is not None
+    

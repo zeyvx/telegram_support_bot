@@ -5,16 +5,20 @@ from states.admin_reply import AdminReply
 from database.dao import admins_dao
 from keyboards.admin import start_menu, request_actions_keyboard, back_to_menu, all_requests_keyboard, rejected_requests_keyboard, help_buttons
 from utils.requests_utils import format_text, format_requests_list, format_rejected_list
-from config import ADMINS
+from config import SENIOR_ADMIN_PRIORITY
 from aiogram.exceptions import TelegramBadRequest
+from handlers.admin.admins import has_permission
 
 router = Router()
 
 
 @router.callback_query(F.data.startswith('take_request:'))
 async def take_request(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -56,8 +60,11 @@ async def take_request(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('complete_request:'))
 async def complete_request(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -102,8 +109,11 @@ async def complete_request(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('open_request:'))
 async def open_request(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -121,7 +131,11 @@ async def open_request(callback: CallbackQuery):
     try:
         await callback.message.edit_text(
             text=format_text(request),
-            reply_markup=request_actions_keyboard(request_id, request[5], request[4])
+            reply_markup=request_actions_keyboard(
+                request_id,
+                request[5],
+                request
+            )
         )
     except TelegramBadRequest as e:
         if "message is not modified" not in str(e):
@@ -132,8 +146,11 @@ async def open_request(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('return_request:'))
 async def return_request(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -166,8 +183,11 @@ async def return_request(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('reply_request:'))
 async def reply_request(callback: CallbackQuery, state: FSMContext):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -221,6 +241,11 @@ async def get_admin_reply(message: Message, state: FSMContext):
         await state.clear()
         return
 
+    if not await admins_dao.is_admin(message.from_user.id):
+        await message.answer("У вас нет доступа.")
+        await state.clear()
+        return
+
     request = await admins_dao.get_request_by_id(request_id)
 
     if request is None:
@@ -253,8 +278,11 @@ async def get_admin_reply(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith('cancel_request:'))
 async def cancel_request(callback: CallbackQuery, state: FSMContext):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -313,6 +341,11 @@ async def get_cancel_answer(message: Message, state: FSMContext):
         await state.clear()
         return
 
+    if not await admins_dao.is_admin(message.from_user.id):
+        await message.answer("У вас нет доступа.")
+        await state.clear()
+        return
+
     reason = message.text.strip()
 
     if not reason:
@@ -364,8 +397,11 @@ async def get_cancel_answer(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'all_requests')
 async def all_requests(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     page = 0
@@ -401,8 +437,11 @@ async def all_requests(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('all_requests_page:'))
 async def all_requests_page(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -438,8 +477,11 @@ async def all_requests_page(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'rejected_requests')
 async def rejected_requests(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await has_permission(
+        callback.from_user.id,
+        SENIOR_ADMIN_PRIORITY
+    ):
+        await callback.answer("У вас нет прав", show_alert=True)
         return
 
     page = 0
@@ -475,8 +517,11 @@ async def rejected_requests(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('rejected_requests_page:'))
 async def rejected_requests_page(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await has_permission(
+        callback.from_user.id,
+        SENIOR_ADMIN_PRIORITY
+    ):
+        await callback.answer("У вас нет прав", show_alert=True)
         return
 
     try:
@@ -512,8 +557,11 @@ async def rejected_requests_page(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('return_rejected:'))
 async def return_rejected(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await has_permission(
+        callback.from_user.id,
+        SENIOR_ADMIN_PRIORITY
+    ):
+        await callback.answer("У вас нет прав", show_alert=True)
         return
 
     try:
@@ -552,8 +600,11 @@ async def return_rejected(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith('show_file:'))
 async def show_file(callback: CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        await callback.answer("У вас нет доступа", show_alert=True)
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer(
+            "У вас нет доступа",
+            show_alert=True
+        )
         return
 
     try:
@@ -572,7 +623,10 @@ async def show_file(callback: CallbackQuery):
     file_type = request[8]
 
     if not file_id:
-        await callback.answer("В этой заявке нет прикреплённого файла.", show_alert=True)
+        await callback.answer(
+            "В этой заявке нет прикреплённого файла.",
+            show_alert=True
+        )
         return
 
     caption = f"Файл заявки №{request[0]}"

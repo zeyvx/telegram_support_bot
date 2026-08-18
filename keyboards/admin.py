@@ -205,3 +205,13 @@ def help_buttons(request_id):
     ])
 
     return keyboard
+
+
+def admin_roles():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='Админ', callback_data='admin'),
+         InlineKeyboardButton(text='Старший админ', callback_data='senior_admin'),
+         InlineKeyboardButton(text='Модератор', callback_data='moderator')]
+    ])
+
+    return keyboard

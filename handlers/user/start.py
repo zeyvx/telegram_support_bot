@@ -3,8 +3,8 @@ from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 import keyboards.user, keyboards.admin
-from database.dao import users_dao
-from config import OPERATOR_PHONE, ADMINS
+from database.dao import users_dao, admins_dao
+from config import OPERATOR_PHONE
 from states.registration import Registration
 from utils import chat_utils
 
@@ -15,7 +15,7 @@ router = Router()
 async def start(message: Message, state: FSMContext):
     await state.clear()
 
-    if message.from_user.id in ADMINS:
+    if await admins_dao.is_admin(message.from_user.id):
         await chat_utils.show(
             message.bot, message.chat.id,
             "🛠 Панель администратора\n\n"

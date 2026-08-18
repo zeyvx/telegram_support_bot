@@ -26,11 +26,14 @@ CREATE TABLE IF NOT EXISTS requests(
                         )
 """)
 
-    cursor = await conn.execute("PRAGMA table_info(requests)")
-    columns = await cursor.fetchall()
-    column_names = [column[1] for column in columns]
-
-    if "file_type" not in column_names:
-        await conn.execute("ALTER TABLE requests ADD COLUMN file_type TEXT NULL")
+    await conn.execute("""
+CREATE TABLE IF NOT EXISTS admins(
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        admin_id INTEGER NOT NULL UNIQUE,
+                        admin_name TEXT NOT NULL,
+                        admin_role TEXT DEFAULT "admin",
+                        priority INTEGER DEFAULT 1
+                        )
+""")
 
     await conn.commit()

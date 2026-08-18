@@ -5,7 +5,6 @@ from states.request_send import SendRequest
 from keyboards import user, admin
 from database.dao import users_dao, admins_dao
 from utils import requests_utils, chat_utils
-from config import ADMINS
 
 router = Router()
 
@@ -239,7 +238,7 @@ async def cancel_own_request(callback: CallbackQuery):
 async def back_to_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
-    if callback.from_user.id in ADMINS:
+    if await admins_dao.is_admin(callback.from_user.id):
         await chat_utils.show(
             callback.bot,
             callback.message.chat.id,

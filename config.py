@@ -6,5 +6,9 @@ load_dotenv()
 BOT_TOKEN = getenv("BOT_TOKEN")
 OPERATOR_PHONE = getenv("OPERATOR_PHONE")
 
-ADMIN_IDS = getenv("ADMIN_IDS", "")
-ADMINS = [int(admin_id.strip()) for admin_id in ADMIN_IDS.split(",") if admin_id.strip()]
+ADMIN_PRIORITY = 1
+SENIOR_ADMIN_PRIORITY = 2
+MODERATOR_PRIORITY = 3
+SUPER_ADMIN = 4
+
+SUPER_ADMIN_ID = int(getenv("SUPER_ADMIN_ID"))
