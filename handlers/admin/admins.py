@@ -52,10 +52,7 @@ async def new_requests(callback: CallbackQuery):
         return
     request = requests[0]
     try:
-        await callback.message.edit_text(
-            text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(current=0, total=len(requests), prefix='new_requests', request_id=request[0], file_id=request[4])
-        )
+        await callback.message.edit_text(text=requests_utils.format_text(request), reply_markup=navigation.get_navigation(current=0, total=len(requests), prefix='new_requests', request_id=request[0], file_id=request[4]))
     except TelegramBadRequest as e:
         if 'message is not modified' not in str(e): raise
     await callback.answer()
@@ -80,10 +77,7 @@ async def new_request_page(callback: CallbackQuery):
         return
     request = requests[page]
     try:
-        await callback.message.edit_text(
-            text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(current=page, total=len(requests), prefix='new_requests', request_id=request[0], file_id=request[4])
-        )
+        await callback.message.edit_text(text=requests_utils.format_text(request), reply_markup=navigation.get_navigation(current=page, total=len(requests), prefix='new_requests', request_id=request[0], file_id=request[4]))
     except TelegramBadRequest as e:
         if 'message is not modified' not in str(e): raise
     await callback.answer()
@@ -92,7 +86,7 @@ async def new_request_page(callback: CallbackQuery):
 @router.callback_query(F.data == 'my_works')
 async def my_works(callback: CallbackQuery):
     if not await admins_dao.is_admin(callback.from_user.id):
-        await callback.answer('У вас пока нет заявок в работе.', show_alert=True)
+        await callback.answer('У вас нет доступа', show_alert=True)
         return
     my_requests = await admins_dao.get_my_admin_requests(callback.from_user.id)
     if not my_requests:
@@ -130,10 +124,7 @@ async def my_works_page(callback: CallbackQuery):
         return
     request = my_requests[page]
     try:
-        await callback.message.edit_text(
-            text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(current=page, total=len(my_requests), prefix='my_works')
-        )
+        await callback.message.edit_text(text=requests_utils.format_text(request), reply_markup=navigation.get_navigation(current=page, total=len(my_requests), prefix='my_works'))
     except TelegramBadRequest as e:
         if 'message is not modified' not in str(e): raise
     await callback.answer()
@@ -174,28 +165,23 @@ async def add_admin(message: Message, command: CommandObject, state: FSMContext)
     if admin_id <= 0:
         await message.answer('Telegram ID должен быть положительным числом.')
         return
+    if admin_id == SUPER_ADMIN_ID:
+        await message.answer('Этот пользователь уже является супер-администратором.')
+        return
     if await admins_dao.is_admin(admin_id):
         await message.answer('Этот пользователь уже является администратором.')
         return
     try:
-        telegram_user = await message.bot.get_chat(admin_id)
+        chat = await message.bot.get_chat(admin_id)
     except TelegramBadRequest:
-        await message.answer(
-            'Пользователь с таким Telegram ID не найден или бот не может получить к нему доступ.\n\n'
-            'Попросите пользователя сначала открыть бота и отправить /start.'
-        )
+        await message.answer('Пользователь с таким Telegram ID не найден или бот не может получить информацию о нём.\n\nУбедитесь, что ID указан правильно и пользователь уже запускал бота через /start.')
         return
-    await state.update_data(
-        admin_id=admin_id,
-        telegram_name=telegram_user.full_name or telegram_user.username or str(admin_id)
-    )
+    if chat.type != 'private':
+        await message.answer('Указанный ID не принадлежит обычному пользователю Telegram.')
+        return
+    await state.update_data(admin_id=admin_id, telegram_name=chat.full_name)
     await state.set_state(AddAdmin.admin_role)
-    await message.answer(
-        f'Пользователь найден: {telegram_user.full_name or "Без имени"}\n'
-        f'ID: {admin_id}\n\n'
-        'Выберите роль админа',
-        reply_markup=admin.admin_roles()
-    )
+    await message.answer(f'Пользователь найден: {chat.full_name}\nID: {admin_id}\n\nВыберите роль админа:', reply_markup=admin.admin_roles())
 
 
 @router.callback_query(F.data.in_({'admin', 'senior_admin', 'moderator'}))
@@ -232,9 +218,5 @@ async def admin_name(message: Message, state: FSMContext):
         await message.answer('Не удалось добавить администратора.\n\nВозможно, этот пользователь уже является администратором.')
         await state.clear()
         return
-    await message.answer(
-        'Администратор успешно добавлен.\n\n'
-        f'ID: {admin_id}\nИмя: {admin_name}\nРоль: {admin_role}\nПриоритет: {priority}',
-        reply_markup=admin.start_menu()
-    )
+    await message.answer('Администратор успешно добавлен.\n\n' f'ID: {admin_id}\nИмя: {admin_name}\nРоль: {admin_role}\nПриоритет: {priority}', reply_markup=admin.start_menu())
     await state.clear()
