@@ -10,7 +10,7 @@ from languages import get_text
 router = Router()
 
 
-@router.callback_query(F.data.startswith('finish_request:'))
+@router.callback_query(F.data.regexp(r'^(?:finish_request|complete_request):\d+$'))
 async def finish_request(callback: CallbackQuery):
     if not await admins_dao.is_admin(callback.from_user.id):
         await callback.answer('У вас нет доступа', show_alert=True)
