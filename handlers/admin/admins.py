@@ -3,8 +3,10 @@ from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandObject
 import database.dao.admins_dao as admins_dao
-from keyboards import navigation, admin
+import database.dao.users_dao as users_dao
+from keyboards import navigation, admin, user as user_keyboards
 from utils import requests_utils
+from languages import get_text
 from config import SENIOR_ADMIN_PRIORITY, SUPER_ADMIN_ID, MODERATOR_PRIORITY, ADMIN_PRIORITY
 from aiogram.fsm.context import FSMContext
 from states.add_admin import AddAdmin
@@ -161,11 +163,7 @@ async def my_admin_stats(callback: CallbackQuery):
         return
     stats = await admins_dao.get_admin_stats(callback.from_user.id)
     rank, total_ranked = await admins_dao.get_admin_rating_rank(callback.from_user.id)
-    text = requests_utils.format_admin_stats(stats, rank, total_ranked)
-    try:
-        await callback.message.edit_text(text=text, reply_markup=admin.start_menu())
-    except TelegramBadRequest as e:
-        if 'message is not modified' not in str(e): raise
+    await callback.message.edit_text(requests_utils.format_admin_stats(stats, rank, total_ranked), reply_markup=admin.start_menu())
     await callback.answer()
 
 
@@ -175,11 +173,44 @@ async def admin_ranking(callback: CallbackQuery):
         await callback.answer('У вас нет доступа', show_alert=True)
         return
     rows = await admins_dao.get_admin_ranking()
-    text = requests_utils.format_admin_ranking(rows)
+    await callback.message.edit_text(requests_utils.format_admin_ranking(rows), reply_markup=admin.start_menu())
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('complete_request:'))
+async def complete_request_and_request_rating(callback: CallbackQuery):
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer('У вас нет доступа', show_alert=True)
+        return
     try:
-        await callback.message.edit_text(text=text, reply_markup=admin.start_menu())
-    except TelegramBadRequest as e:
-        if 'message is not modified' not in str(e): raise
+        request_id = int(callback.data.split(':')[1])
+    except (ValueError, IndexError):
+        await callback.answer('Не удалось определить заявку.', show_alert=True)
+        return
+
+    request = await admins_dao.get_request_by_id(request_id)
+    if request is None:
+        await callback.answer('Заявка не найдена.', show_alert=True)
+        return
+    if request[5] != 'В работе' or request[6] != callback.from_user.id:
+        await callback.answer('Заявка больше не находится в вашей работе.', show_alert=True)
+        return
+
+    success = await admins_dao.complete_request(request_id, callback.from_user.id)
+    if not success:
+        await callback.answer('Не удалось завершить заявку.', show_alert=True)
+        return
+
+    language = await users_dao.get_language(request[1])
+    await callback.bot.send_message(
+        request[1],
+        get_text(language, 'rating_prompt', id=request_id),
+        reply_markup=user_keyboards.rating_keyboard(request_id)
+    )
+    await callback.message.edit_text(
+        f'Заявка №{request_id} успешно завершена.\n\nПользователю отправлена просьба оценить качество помощи.',
+        reply_markup=admin.start_menu()
+    )
     await callback.answer()
 
 
@@ -240,9 +271,5 @@ async def admin_name(message: Message, state: FSMContext):
         await message.answer('Не удалось добавить администратора.\n\nВозможно, этот пользователь уже является администратором.')
         await state.clear()
         return
-    await message.answer(
-        'Администратор успешно добавлен.\n\n'
-        f'ID: {admin_id}\nИмя: {admin_name}\nРоль: {admin_role}\nПриоритет: {priority}',
-        reply_markup=admin.start_menu()
-    )
+    await message.answer('Администратор успешно добавлен.\n\n' f'ID: {admin_id}\nИмя: {admin_name}\nРоль: {admin_role}\nПриоритет: {priority}', reply_markup=admin.start_menu())
     await state.clear()
