@@ -1,5 +1,7 @@
 import aiosqlite
+from datetime import datetime, timezone
 from config import SUPER_ADMIN_ID
+
 
 async def get_all_users():
     async with aiosqlite.connect('database.db') as conn:
@@ -89,18 +91,19 @@ async def take_request(request_id, admin_id):
 
 
 async def complete_request(request_id, admin_id=None):
+    completed_at = datetime.now(timezone.utc).isoformat()
     async with aiosqlite.connect('database.db') as conn:
         if admin_id is not None:
             cursor = await conn.execute(
-                "UPDATE requests SET status = 'Завершена' "
+                "UPDATE requests SET status = 'Завершена', completed_at = ? "
                 "WHERE id = ? AND status = 'В работе' AND admin_id = ?",
-                (request_id, admin_id)
+                (completed_at, request_id, admin_id)
             )
         else:
             cursor = await conn.execute(
-                "UPDATE requests SET status = 'Завершена' "
+                "UPDATE requests SET status = 'Завершена', completed_at = ? "
                 "WHERE id = ? AND status = 'В работе'",
-                (request_id,)
+                (completed_at, request_id)
             )
         await conn.commit()
         return cursor.rowcount > 0
@@ -174,23 +177,15 @@ async def get_admin_priority(admin_id):
             "SELECT priority FROM admins WHERE admin_id = ?",
             (admin_id,)
         )
-
         admin = await cursor.fetchone()
-
-        if admin is None:
-            return 0
-
-        return admin[0]
+        return admin[0] if admin is not None else 0
 
 
 async def add_admin(admin_id, admin_role, admin_name, priority):
     async with aiosqlite.connect('database.db') as conn:
         try:
             await conn.execute(
-                """
-                INSERT INTO admins (admin_id, admin_role, admin_name, priority)
-                VALUES (?, ?, ?, ?)
-                """,
+                "INSERT INTO admins (admin_id, admin_role, admin_name, priority) VALUES (?, ?, ?, ?)",
                 (admin_id, admin_role, admin_name, priority)
             )
             await conn.commit()
@@ -205,11 +200,116 @@ async def is_admin(admin_id):
 
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute(
-            "SELECT * FROM admins WHERE admin_id = ?",
+            "SELECT 1 FROM admins WHERE admin_id = ?",
             (admin_id,)
         )
+        return await cursor.fetchone() is not None
 
-        admin = await cursor.fetchone()
 
-        return admin is not None
-    
+async def get_admin_stats(admin_id):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            """
+            SELECT
+                COUNT(CASE WHEN status = 'Завершена' THEN 1 END),
+                COUNT(CASE WHEN status = 'Завершена' AND date(completed_at) = date('now', '+5 hours') THEN 1 END)
+            FROM requests
+            WHERE admin_id = ?
+            """,
+            (admin_id,)
+        )
+        processed_total, processed_today = await cursor.fetchone()
+
+        cursor = await conn.execute(
+            "SELECT COUNT(*), COALESCE(AVG(rating), 0) FROM ratings WHERE admin_id = ?",
+            (admin_id,)
+        )
+        rating_count, average_rating = await cursor.fetchone()
+
+        cursor = await conn.execute(
+            "SELECT COUNT(*) FROM requests WHERE admin_id = ? AND status = 'В работе'",
+            (admin_id,)
+        )
+        active = (await cursor.fetchone())[0]
+
+        return {
+            'processed_total': processed_total or 0,
+            'processed_today': processed_today or 0,
+            'rating_count': rating_count or 0,
+            'average_rating': average_rating or 0,
+            'active': active or 0,
+        }
+
+
+async def get_admin_rating_rank(admin_id):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            """
+            SELECT a.admin_id, a.admin_name, COALESCE(AVG(r.rating), 0) AS avg_rating,
+                   COUNT(r.id) AS rating_count
+            FROM admins a
+            LEFT JOIN ratings r ON r.admin_id = a.admin_id
+            GROUP BY a.admin_id, a.admin_name
+            HAVING COUNT(r.id) > 0
+            ORDER BY avg_rating DESC, rating_count DESC, a.admin_id ASC
+            """
+        )
+        rows = await cursor.fetchall()
+
+    for position, row in enumerate(rows, 1):
+        if row[0] == admin_id:
+            return position, len(rows)
+
+    return None, len(rows)
+
+
+async def get_admin_ranking():
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            """
+            SELECT a.admin_id, a.admin_name,
+                   COALESCE(AVG(r.rating), 0) AS avg_rating,
+                   COUNT(r.id) AS rating_count,
+                   COUNT(CASE WHEN req.status = 'Завершена' THEN 1 END) AS processed
+            FROM admins a
+            LEFT JOIN ratings r ON r.admin_id = a.admin_id
+            LEFT JOIN requests req ON req.admin_id = a.admin_id
+            GROUP BY a.admin_id, a.admin_name
+            ORDER BY avg_rating DESC, rating_count DESC, processed DESC, a.admin_id ASC
+            """
+        )
+        return await cursor.fetchall()
+
+
+async def add_rating(request_id, user_id, rating):
+    if rating not in range(1, 6):
+        return False
+
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            "SELECT user_id, admin_id, status FROM requests WHERE id = ?",
+            (request_id,)
+        )
+        request = await cursor.fetchone()
+
+        if request is None or request[0] != user_id or request[1] is None or request[2] != 'Завершена':
+            return False
+
+        try:
+            await conn.execute(
+                "INSERT INTO ratings (request_id, user_id, admin_id, rating, created_at) VALUES (?, ?, ?, ?, ?)",
+                (request_id, user_id, request[1], rating, datetime.now(timezone.utc).isoformat())
+            )
+            await conn.commit()
+            return True
+        except aiosqlite.IntegrityError:
+            return False
+
+
+async def has_rating(request_id, user_id):
+    async with aiosqlite.connect('database.db') as conn:
+        cursor = await conn.execute(
+            "SELECT 1 FROM ratings WHERE request_id = ? AND user_id = ?",
+            (request_id, user_id)
+        )
+        return await cursor.fetchone() is not None
