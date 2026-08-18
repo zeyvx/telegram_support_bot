@@ -6,8 +6,20 @@ import keyboards.user, keyboards.admin
 from database.dao import users_dao, admins_dao
 from config import OPERATOR_PHONE
 from utils import chat_utils
+from languages import get_text
 
 router = Router()
+
+
+async def show_user_menu(callback_or_message):
+    user_id = callback_or_message.from_user.id
+    language = await users_dao.get_language(user_id)
+    await chat_utils.show(
+        callback_or_message.bot,
+        callback_or_message.chat.id,
+        get_text(language, 'main_menu'),
+        keyboards.user.main_keyboard(language)
+    )
 
 
 @router.message(CommandStart())
@@ -18,61 +30,63 @@ async def start(message: Message, state: FSMContext):
         await chat_utils.show(
             message.bot, message.chat.id,
             "🛠 Панель администратора\n\n"
-            "Здесь вы можете принимать заявки, работать с обращениями пользователей "
-            "и просматривать статистику.\n\n"
+            "Здесь вы можете принимать заявки, работать с обращениями пользователей и просматривать статистику.\n\n"
             "Выберите нужный раздел:",
             keyboards.admin.start_menu()
         )
         return
 
-    await chat_utils.show(
-        message.bot, message.chat.id,
-        "Главное меню\n\n"
-        "Здесь вы можете отправить новую заявку, посмотреть свои обращения, "
-        "найти ответ на частый вопрос или связаться с оператором.",
-        keyboards.user.main_keyboard()
-    )
-
     await users_dao.add_user(message.from_user.id)
+    await show_user_menu(message)
 
-    return
+
+@router.callback_query(F.data == 'language')
+async def language_menu(callback: CallbackQuery):
+    language = await users_dao.get_language(callback.from_user.id)
+    await chat_utils.show(
+        callback.bot,
+        callback.message.chat.id,
+        get_text(language, 'choose_language'),
+        keyboards.user.language_keyboard()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('set_language:'))
+async def set_language(callback: CallbackQuery):
+    language = callback.data.split(':', 1)[1]
+    if language not in {'ru', 'uz'}:
+        await callback.answer('Unknown language', show_alert=True)
+        return
+
+    await users_dao.set_language(callback.from_user.id, language)
+    await chat_utils.show(
+        callback.bot,
+        callback.message.chat.id,
+        get_text(language, 'language_changed'),
+        keyboards.user.main_keyboard(language)
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == 'faq')
 async def faq(callback: CallbackQuery):
-    text = (
-        "❓ Часто задаваемые вопросы\n\n"
-        "Как отправить заявку?\n"
-        "Нажмите «Отправить заявку», выберите категорию, подробно опишите проблему "
-        "и при необходимости прикрепите фото или файл.\n\n"
-        "Где посмотреть свою заявку?\n"
-        "Откройте раздел «Мои заявки». Там отображаются все ваши обращения и их текущий статус.\n\n"
-        "Когда мне ответят?\n"
-        "После отправки заявка попадёт к операторам. Когда один из них возьмёт её в работу, "
-        "он сможет ознакомиться с описанием и отправить вам ответ.\n\n"
-        "Можно ли отменить заявку?\n"
-        "Да. Отменить заявку можно самостоятельно, пока она находится в статусе «Новая».\n\n"
-        "Что делать, если заявку отклонили?\n"
-        "В сообщении об отклонении будет указана причина. Если вы не согласны с решением, "
-        "свяжитесь с оператором."
-    )
-
+    language = await users_dao.get_language(callback.from_user.id)
     await chat_utils.show(
         callback.bot,
         callback.message.chat.id,
-        text,
-        keyboards.user.back_to_menu()
+        get_text(language, 'faq_text'),
+        keyboards.user.back_to_menu(language)
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == 'call_operator')
 async def operator(callback: CallbackQuery):
+    language = await users_dao.get_language(callback.from_user.id)
     await chat_utils.show(
         callback.bot, callback.message.chat.id,
-        f"Связаться с оператором\n\n"
-        f"Телефон: {OPERATOR_PHONE}\n\n"
-        "Если вопрос связан с вашей заявкой, сообщите оператору её номер.",
-        keyboards.user.back_to_menu()
+        get_text(language, 'operator', phone=OPERATOR_PHONE),
+        keyboards.user.back_to_menu(language)
     )
     await callback.answer()
