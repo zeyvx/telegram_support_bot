@@ -4,10 +4,28 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def start_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='Новые заявки', callback_data='new_requests'), InlineKeyboardButton(text='Мои заявки', callback_data='my_works')],
-        [InlineKeyboardButton(text='Все заявки', callback_data='all_requests'), InlineKeyboardButton(text='Статистика', callback_data='statistic')],
-        [InlineKeyboardButton(text='📊 Моя статистика', callback_data='my_admin_stats'), InlineKeyboardButton(text='🏆 Рейтинг', callback_data='admin_ranking')],
-        [InlineKeyboardButton(text='Отклоненные заявки', callback_data='rejected_requests')]
+        [
+            InlineKeyboardButton(text='Новые заявки', callback_data='new_requests'),
+            InlineKeyboardButton(text='Мои заявки', callback_data='my_works')
+        ],
+        [
+            InlineKeyboardButton(text='Все заявки', callback_data='all_requests'),
+            InlineKeyboardButton(text='📊 Моя статистика', callback_data='my_stats')
+        ],
+        [
+            InlineKeyboardButton(text='🏆 Рейтинг админов', callback_data='admin_ranking'),
+            InlineKeyboardButton(text='Отклоненные заявки', callback_data='rejected_requests')
+        ]
+    ])
+
+
+def statistics_menu():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='📊 Моя статистика', callback_data='my_stats'),
+            InlineKeyboardButton(text='🏆 Рейтинг', callback_data='admin_ranking')
+        ],
+        [InlineKeyboardButton(text='🔙 В меню', callback_data='back_to_menu')]
     ])
 
 
