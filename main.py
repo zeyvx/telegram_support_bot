@@ -8,6 +8,7 @@ from handlers.user.start import router as start_router
 from handlers.user.requests import router as requests_router
 from handlers.admin.admins import router as admin_router
 from handlers.admin.requests import router as admin_requests_router
+from handlers.admin.finish import router as finish_router
 from handlers.admin.statistics import router as statistics_router
 
 
@@ -16,6 +17,7 @@ dp.include_router(start_router)
 dp.include_router(requests_router)
 dp.include_router(admin_router)
 dp.include_router(admin_requests_router)
+dp.include_router(finish_router)
 dp.include_router(statistics_router)
 
 
