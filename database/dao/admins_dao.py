@@ -18,25 +18,19 @@ async def get_all_requests():
 async def get_all_requests_page(page, limit):
     async with aiosqlite.connect('database.db') as conn:
         offset = page * limit
-        cursor = await conn.execute(
-            'SELECT * FROM requests ORDER BY id ASC LIMIT ? OFFSET ?',
-            (limit, offset)
-        )
+        cursor = await conn.execute('SELECT * FROM requests ORDER BY id ASC LIMIT ? OFFSET ?', (limit, offset))
         return await cursor.fetchall()
 
 
 async def get_all_requests_count():
     async with aiosqlite.connect('database.db') as conn:
         cursor = await conn.execute('SELECT COUNT(*) FROM requests')
-        result = await cursor.fetchone()
-        return result[0]
+        return (await cursor.fetchone())[0]
 
 
 async def get_new_requests():
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute(
-            "SELECT * FROM requests WHERE status = 'Новая' ORDER BY id DESC"
-        )
+        cursor = await conn.execute("SELECT * FROM requests WHERE status = 'Новая' ORDER BY id DESC")
         return await cursor.fetchall()
 
 
@@ -55,8 +49,7 @@ async def get_admin_requests_count(admin_id):
             "SELECT COUNT(*) FROM requests WHERE admin_id = ? AND status = 'В работе'",
             (admin_id,)
         )
-        result = await cursor.fetchone()
-        return result[0]
+        return (await cursor.fetchone())[0]
 
 
 async def get_rejected_requests_page(page, limit):
@@ -71,11 +64,8 @@ async def get_rejected_requests_page(page, limit):
 
 async def get_rejected_requests_count():
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute(
-            "SELECT COUNT(*) FROM requests WHERE status = 'Отклонено'"
-        )
-        result = await cursor.fetchone()
-        return result[0]
+        cursor = await conn.execute("SELECT COUNT(*) FROM requests WHERE status = 'Отклонено'")
+        return (await cursor.fetchone())[0]
 
 
 async def take_request(request_id, admin_id):
@@ -111,10 +101,7 @@ async def complete_request(request_id, admin_id=None):
 
 async def get_request_by_id(request_id):
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute(
-            'SELECT * FROM requests WHERE id = ?',
-            (request_id,)
-        )
+        cursor = await conn.execute('SELECT * FROM requests WHERE id = ?', (request_id,))
         return await cursor.fetchone()
 
 
@@ -151,9 +138,7 @@ async def return_rejected_request(request_id):
 
 async def get_statistics():
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute(
-            'SELECT status, COUNT(*) FROM requests GROUP BY status'
-        )
+        cursor = await conn.execute('SELECT status, COUNT(*) FROM requests GROUP BY status')
         return await cursor.fetchall()
 
 
@@ -171,14 +156,10 @@ async def cancel_request(request_id, admin_id, reason):
 async def get_admin_priority(admin_id):
     if admin_id == SUPER_ADMIN_ID:
         return 4
-
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute(
-            "SELECT priority FROM admins WHERE admin_id = ?",
-            (admin_id,)
-        )
+        cursor = await conn.execute("SELECT priority FROM admins WHERE admin_id = ?", (admin_id,))
         admin = await cursor.fetchone()
-        return admin[0] if admin is not None else 0
+        return admin[0] if admin else 0
 
 
 async def add_admin(admin_id, admin_role, admin_name, priority):
@@ -197,12 +178,8 @@ async def add_admin(admin_id, admin_role, admin_name, priority):
 async def is_admin(admin_id):
     if admin_id == SUPER_ADMIN_ID:
         return True
-
     async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute(
-            "SELECT 1 FROM admins WHERE admin_id = ?",
-            (admin_id,)
-        )
+        cursor = await conn.execute("SELECT 1 FROM admins WHERE admin_id = ?", (admin_id,))
         return await cursor.fetchone() is not None
 
 
@@ -232,35 +209,22 @@ async def get_admin_stats(admin_id):
         )
         active = (await cursor.fetchone())[0]
 
-        return {
-            'processed_total': processed_total or 0,
-            'processed_today': processed_today or 0,
-            'rating_count': rating_count or 0,
-            'average_rating': average_rating or 0,
-            'active': active or 0,
-        }
+    return {
+        'processed_total': processed_total or 0,
+        'processed_today': processed_today or 0,
+        'rating_count': rating_count or 0,
+        'average_rating': average_rating or 0,
+        'active': active or 0,
+    }
 
 
 async def get_admin_rating_rank(admin_id):
-    async with aiosqlite.connect('database.db') as conn:
-        cursor = await conn.execute(
-            """
-            SELECT a.admin_id, a.admin_name, COALESCE(AVG(r.rating), 0) AS avg_rating,
-                   COUNT(r.id) AS rating_count
-            FROM admins a
-            LEFT JOIN ratings r ON r.admin_id = a.admin_id
-            GROUP BY a.admin_id, a.admin_name
-            HAVING COUNT(r.id) > 0
-            ORDER BY avg_rating DESC, rating_count DESC, a.admin_id ASC
-            """
-        )
-        rows = await cursor.fetchall()
-
-    for position, row in enumerate(rows, 1):
+    rows = await get_admin_ranking()
+    ranked = [row for row in rows if row[3] > 0]
+    for position, row in enumerate(ranked, 1):
         if row[0] == admin_id:
-            return position, len(rows)
-
-    return None, len(rows)
+            return position, len(ranked)
+    return None, len(ranked)
 
 
 async def get_admin_ranking():
@@ -268,17 +232,28 @@ async def get_admin_ranking():
         cursor = await conn.execute(
             """
             SELECT a.admin_id, a.admin_name,
-                   COALESCE(AVG(r.rating), 0) AS avg_rating,
-                   COUNT(r.id) AS rating_count,
-                   COUNT(CASE WHEN req.status = 'Завершена' THEN 1 END) AS processed
+                   COALESCE((SELECT AVG(r.rating) FROM ratings r WHERE r.admin_id = a.admin_id), 0) AS avg_rating,
+                   (SELECT COUNT(*) FROM ratings r WHERE r.admin_id = a.admin_id) AS rating_count,
+                   (SELECT COUNT(*) FROM requests q WHERE q.admin_id = a.admin_id AND q.status = 'Завершена') AS processed
             FROM admins a
-            LEFT JOIN ratings r ON r.admin_id = a.admin_id
-            LEFT JOIN requests req ON req.admin_id = a.admin_id
-            GROUP BY a.admin_id, a.admin_name
             ORDER BY avg_rating DESC, rating_count DESC, processed DESC, a.admin_id ASC
             """
         )
-        return await cursor.fetchall()
+        rows = await cursor.fetchall()
+
+    if SUPER_ADMIN_ID not in {row[0] for row in rows}:
+        # The super admin is configured outside the admins table.
+        async with aiosqlite.connect('database.db') as conn:
+            cursor = await conn.execute(
+                "SELECT COALESCE((SELECT AVG(rating) FROM ratings WHERE admin_id = ?), 0), "
+                "(SELECT COUNT(*) FROM ratings WHERE admin_id = ?), "
+                "(SELECT COUNT(*) FROM requests WHERE admin_id = ? AND status = 'Завершена')",
+                (SUPER_ADMIN_ID, SUPER_ADMIN_ID, SUPER_ADMIN_ID)
+            )
+            avg_rating, rating_count, processed = await cursor.fetchone()
+        rows.append((SUPER_ADMIN_ID, 'Супер-админ', avg_rating or 0, rating_count or 0, processed or 0))
+
+    return sorted(rows, key=lambda row: (-row[2], -row[3], -row[4], row[0]))
 
 
 async def add_rating(request_id, user_id, rating):
