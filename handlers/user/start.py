@@ -11,12 +11,11 @@ from languages import get_text
 router = Router()
 
 
-async def show_user_menu(callback_or_message):
-    user_id = callback_or_message.from_user.id
-    language = await users_dao.get_language(user_id)
+async def show_user_menu(message: Message):
+    language = await users_dao.get_language(message.from_user.id)
     await chat_utils.show(
-        callback_or_message.bot,
-        callback_or_message.chat.id,
+        message.bot,
+        message.chat.id,
         get_text(language, 'main_menu'),
         keyboards.user.main_keyboard(language)
     )
@@ -47,7 +46,7 @@ async def language_menu(callback: CallbackQuery):
         callback.bot,
         callback.message.chat.id,
         get_text(language, 'choose_language'),
-        keyboards.user.language_keyboard()
+        keyboards.user.language_keyboard(language)
     )
     await callback.answer()
 
