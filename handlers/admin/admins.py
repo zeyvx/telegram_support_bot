@@ -20,218 +20,166 @@ async def has_permission(admin_id, required_priority):
 @router.message(Command('find'))
 async def find_request(message: Message, command: CommandObject):
     if not await admins_dao.is_admin(message.from_user.id):
-        await message.answer("У вас нет доступа")
+        await message.answer('У вас нет доступа')
         return
-
     if not command.args:
-        await message.answer(
-            "Укажите ID заявки.\n\n"
-            "Пример:\n"
-            "/find 25"
-        )
+        await message.answer('Укажите ID заявки.\n\nПример:\n/find 25')
         return
-
     try:
         request_id = int(command.args.strip())
     except ValueError:
-        await message.answer("ID заявки должен быть числом. Например: /find 25")
+        await message.answer('ID заявки должен быть числом. Например: /find 25')
         return
-
     request = await admins_dao.get_request_by_id(request_id)
-
     if request is None:
-        await message.answer(f"Заявка №{request_id} не найдена.")
+        await message.answer(f'Заявка №{request_id} не найдена.')
         return
-
     await message.answer(text=requests_utils.format_find(request), parse_mode='HTML')
 
 
 @router.callback_query(F.data == 'new_requests')
 async def new_requests(callback: CallbackQuery):
     if not await admins_dao.is_admin(callback.from_user.id):
-        await callback.answer("У вас нет доступа", show_alert=True)
+        await callback.answer('У вас нет доступа', show_alert=True)
         return
-
     requests = await admins_dao.get_new_requests()
-
     if not requests:
         try:
-            await callback.message.edit_text(
-                "Сейчас новых заявок нет.",
-                reply_markup=admin.start_menu()
-            )
+            await callback.message.edit_text('Сейчас новых заявок нет.', reply_markup=admin.start_menu())
         except TelegramBadRequest as e:
-            if "message is not modified" not in str(e):
-                raise
-
+            if 'message is not modified' not in str(e): raise
         await callback.answer()
         return
-
     current = 0
     request = requests[current]
-
     try:
         await callback.message.edit_text(
             text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(
-                current=current,
-                total=len(requests),
-                prefix='new_requests',
-                request_id=request[0],
-                file_id=request[4]
-            )
+            reply_markup=navigation.get_navigation(current=current, total=len(requests), prefix='new_requests', request_id=request[0], file_id=request[4])
         )
     except TelegramBadRequest as e:
-        if "message is not modified" not in str(e):
-            raise
-
+        if 'message is not modified' not in str(e): raise
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("new_requests_page:"))
+@router.callback_query(F.data.startswith('new_requests_page:'))
 async def new_request_page(callback: CallbackQuery):
     if not await admins_dao.is_admin(callback.from_user.id):
-        await callback.answer("У вас нет доступа", show_alert=True)
+        await callback.answer('У вас нет доступа', show_alert=True)
         return
-
     try:
-        page = int(callback.data.split(":")[1])
+        page = int(callback.data.split(':')[1])
     except (ValueError, IndexError):
-        await callback.answer("Не удалось определить страницу.", show_alert=True)
+        await callback.answer('Не удалось определить страницу.', show_alert=True)
         return
-
     requests = await admins_dao.get_new_requests()
-
     if not requests:
-        await callback.answer("Сейчас новых заявок нет.")
+        await callback.answer('Сейчас новых заявок нет.')
         return
-
     if page < 0 or page >= len(requests):
-        await callback.answer("Такая заявка не найдена.", show_alert=True)
+        await callback.answer('Такая заявка не найдена.', show_alert=True)
         return
-
     request = requests[page]
-
     try:
         await callback.message.edit_text(
             text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(
-                current=page,
-                total=len(requests),
-                prefix='new_requests',
-                request_id=request[0],
-                file_id=request[4]
-            )
+            reply_markup=navigation.get_navigation(current=page, total=len(requests), prefix='new_requests', request_id=request[0], file_id=request[4])
         )
     except TelegramBadRequest as e:
-        if "message is not modified" not in str(e):
-            raise
-
+        if 'message is not modified' not in str(e): raise
     await callback.answer()
 
 
 @router.callback_query(F.data == 'my_works')
 async def my_works(callback: CallbackQuery):
     if not await admins_dao.is_admin(callback.from_user.id):
-        await callback.answer("У вас нет доступа", show_alert=True)
+        await callback.answer('У вас нет доступа', show_alert=True)
         return
-
     my_requests = await admins_dao.get_my_admin_requests(callback.from_user.id)
-
     if not my_requests:
         try:
-            await callback.message.edit_text(
-                "У вас пока нет заявок в работе.",
-                reply_markup=admin.start_menu()
-            )
+            await callback.message.edit_text('У вас пока нет заявок в работе.', reply_markup=admin.start_menu())
         except TelegramBadRequest as e:
-            if "message is not modified" not in str(e):
-                raise
-
+            if 'message is not modified' not in str(e): raise
         await callback.answer()
         return
-
     page_requests = my_requests[:5]
-
-    text = "\n".join(
-        requests_utils.format_short(request, i + 1)
-        for i, request in enumerate(page_requests)
-    )
-
+    text = '\n'.join(requests_utils.format_short(request, i + 1) for i, request in enumerate(page_requests))
     try:
-        await callback.message.edit_text(
-            text=f"📂 Мои заявки в работе\n\n{text}",
-            reply_markup=admin.my_works_list_keyboard(page_requests)
-        )
+        await callback.message.edit_text(text=f'📂 Мои заявки в работе\n\n{text}', reply_markup=admin.my_works_list_keyboard(page_requests))
     except TelegramBadRequest as e:
-        if "message is not modified" not in str(e):
-            raise
-
+        if 'message is not modified' not in str(e): raise
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith('my_works_page:'))
 async def my_works_page(callback: CallbackQuery):
     if not await admins_dao.is_admin(callback.from_user.id):
-        await callback.answer("У вас нет доступа", show_alert=True)
+        await callback.answer('У вас нет доступа', show_alert=True)
         return
-
     try:
         page = int(callback.data.split(':')[1])
     except (ValueError, IndexError):
-        await callback.answer("Не удалось определить страницу.", show_alert=True)
+        await callback.answer('Не удалось определить страницу.', show_alert=True)
         return
-
     my_requests = await admins_dao.get_my_admin_requests(callback.from_user.id)
-
     if not my_requests:
-        await callback.answer("У вас сейчас нет заявок в работе.")
+        await callback.answer('У вас сейчас нет заявок в работе.')
         return
-
     if page < 0 or page >= len(my_requests):
-        await callback.answer("Такая заявка не найдена.", show_alert=True)
+        await callback.answer('Такая заявка не найдена.', show_alert=True)
         return
-
     request = my_requests[page]
-
     try:
         await callback.message.edit_text(
             text=requests_utils.format_text(request),
-            reply_markup=navigation.get_navigation(
-                current=page,
-                total=len(my_requests),
-                prefix='my_works'
-            )
+            reply_markup=navigation.get_navigation(current=page, total=len(my_requests), prefix='my_works')
         )
     except TelegramBadRequest as e:
-        if "message is not modified" not in str(e):
-            raise
-
+        if 'message is not modified' not in str(e): raise
     await callback.answer()
 
 
 @router.callback_query(F.data == 'statistic')
 async def statistic(callback: CallbackQuery):
-    if not await has_permission(
-        callback.from_user.id,
-        SENIOR_ADMIN_PRIORITY
-    ):
-        await callback.answer("У вас нет прав", show_alert=True)
+    if not await has_permission(callback.from_user.id, SENIOR_ADMIN_PRIORITY):
+        await callback.answer('У вас нет прав', show_alert=True)
         return
-
     stats = dict(await admins_dao.get_statistics())
-
     text = requests_utils.format_stats(stats)
-
     try:
-        await callback.message.edit_text(
-            text=text,
-            reply_markup=admin.start_menu()
-        )
+        await callback.message.edit_text(text=text, reply_markup=admin.start_menu())
     except TelegramBadRequest as e:
-        if "message is not modified" not in str(e):
-            raise
+        if 'message is not modified' not in str(e): raise
+    await callback.answer()
 
+
+@router.callback_query(F.data == 'my_admin_stats')
+async def my_admin_stats(callback: CallbackQuery):
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer('У вас нет доступа', show_alert=True)
+        return
+    stats = await admins_dao.get_admin_stats(callback.from_user.id)
+    rank, total_ranked = await admins_dao.get_admin_rating_rank(callback.from_user.id)
+    text = requests_utils.format_admin_stats(stats, rank, total_ranked)
+    try:
+        await callback.message.edit_text(text=text, reply_markup=admin.start_menu())
+    except TelegramBadRequest as e:
+        if 'message is not modified' not in str(e): raise
+    await callback.answer()
+
+
+@router.callback_query(F.data == 'admin_ranking')
+async def admin_ranking(callback: CallbackQuery):
+    if not await admins_dao.is_admin(callback.from_user.id):
+        await callback.answer('У вас нет доступа', show_alert=True)
+        return
+    rows = await admins_dao.get_admin_ranking()
+    text = requests_utils.format_admin_ranking(rows)
+    try:
+        await callback.message.edit_text(text=text, reply_markup=admin.start_menu())
+    except TelegramBadRequest as e:
+        if 'message is not modified' not in str(e): raise
     await callback.answer()
 
 
@@ -240,105 +188,61 @@ async def nothing(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(Command("add_admin"))
+@router.message(Command('add_admin'))
 async def add_admin(message: Message, command: CommandObject, state: FSMContext):
     if message.from_user.id != SUPER_ADMIN_ID:
-        await message.answer("У вас нет прав.")
+        await message.answer('У вас нет прав.')
         return
-
     if not command.args:
-        await message.answer(
-            "Укажите Telegram ID администратора.\n\n"
-            "Пример:\n"
-            "/add_admin 123456789"
-        )
+        await message.answer('Укажите Telegram ID администратора.\n\nПример:\n/add_admin 123456789')
         return
-
     try:
         admin_id = int(command.args.strip())
     except ValueError:
-        await message.answer("Telegram ID должен быть числом.")
+        await message.answer('Telegram ID должен быть числом.')
         return
-
-    await state.update_data(admin_id = admin_id)
+    await state.update_data(admin_id=admin_id)
     await state.set_state(AddAdmin.admin_role)
-
-    await message.answer(
-        "Выберите роль админа",
-        reply_markup=admin.admin_roles()
-    )
+    await message.answer('Выберите роль админа', reply_markup=admin.admin_roles())
 
 
 @router.callback_query(F.data.in_({'admin', 'senior_admin', 'moderator'}))
 async def select_admin_role(callback: CallbackQuery, state: FSMContext):
-    roles = {
-        'admin': 'Админ',
-        'senior_admin': 'Старший админ',
-        'moderator': 'Модератор'
-    }
-
+    roles = {'admin': 'Админ', 'senior_admin': 'Старший админ', 'moderator': 'Модератор'}
     role = roles.get(callback.data)
-
     if role is None:
-        await callback.answer("Неизвестная роль.", show_alert=True)
+        await callback.answer('Неизвестная роль.', show_alert=True)
         return
-
     await state.update_data(admin_role=callback.data)
     await state.set_state(AddAdmin.admin_name)
-
-    await callback.message.edit_text(
-        f"Выбрана роль: {role}\n\n"
-        "Теперь введите имя администратора:"
-    )
-
+    await callback.message.edit_text(f'Выбрана роль: {role}\n\nТеперь введите имя администратора:')
     await callback.answer()
 
 
 @router.message(AddAdmin.admin_name, F.text)
 async def admin_name(message: Message, state: FSMContext):
-    await state.update_data(admin_name=message.text)
-
+    admin_name = message.text.strip()
+    if not admin_name:
+        await message.answer('Имя администратора не может быть пустым.')
+        return
+    await state.update_data(admin_name=admin_name)
     data = await state.get_data()
-
     admin_id = data.get('admin_id')
     admin_role = data.get('admin_role')
-    admin_name = data.get('admin_name')
-
-    priorities = {
-        'admin': ADMIN_PRIORITY,
-        'senior_admin': SENIOR_ADMIN_PRIORITY,
-        'moderator': MODERATOR_PRIORITY
-    }
-
+    priorities = {'admin': ADMIN_PRIORITY, 'senior_admin': SENIOR_ADMIN_PRIORITY, 'moderator': MODERATOR_PRIORITY}
     priority = priorities.get(admin_role)
-
-    if not admin_id or not admin_role or not admin_name or priority is None:
-        await message.answer("Не удалось получить данные администратора.")
+    if not admin_id or not admin_role or priority is None:
+        await message.answer('Не удалось получить данные администратора.')
         await state.clear()
         return
-
-    success = await admins_dao.add_admin(
-        admin_id,
-        admin_role,
-        admin_name,
-        priority
-    )
-
+    success = await admins_dao.add_admin(admin_id, admin_role, admin_name, priority)
     if not success:
-        await message.answer(
-            "Не удалось добавить администратора.\n\n"
-            "Возможно, этот пользователь уже является администратором."
-        )
+        await message.answer('Не удалось добавить администратора.\n\nВозможно, этот пользователь уже является администратором.')
         await state.clear()
         return
-
     await message.answer(
-        "Администратор успешно добавлен.\n\n"
-        f"ID: {admin_id}\n"
-        f"Имя: {admin_name}\n"
-        f"Роль: {admin_role}\n"
-        f"Приоритет: {priority}"
-        ,reply_markup=admin.start_menu()
+        'Администратор успешно добавлен.\n\n'
+        f'ID: {admin_id}\nИмя: {admin_name}\nРоль: {admin_role}\nПриоритет: {priority}',
+        reply_markup=admin.start_menu()
     )
-
     await state.clear()
