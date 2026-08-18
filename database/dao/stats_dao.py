@@ -8,7 +8,7 @@ async def get_admin_stats(admin_id):
             SELECT
                 COUNT(CASE WHEN status = 'Завершена' THEN 1 END),
                 COUNT(CASE WHEN status = 'Завершена'
-                           AND date(completed_at) = date('now', '+5 hours') THEN 1 END),
+                           AND date(completed_at, '+5 hours') = date('now', '+5 hours') THEN 1 END),
                 COUNT(CASE WHEN status = 'В работе' THEN 1 END)
             FROM requests
             WHERE admin_id = ?
