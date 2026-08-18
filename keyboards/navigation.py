@@ -13,7 +13,7 @@ def get_navigation(current, total, prefix, request_id=None, file_id=None, action
     keyboard = [buttons]
 
     if request_id is not None:
-        if actions:
+        if actions or prefix == 'my_works':
             keyboard.append([
                 InlineKeyboardButton(text='✅ Завершить', callback_data=f'finish_request:{request_id}'),
                 InlineKeyboardButton(text='💬 Ответить', callback_data=f'reply_request:{request_id}')
