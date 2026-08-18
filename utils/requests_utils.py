@@ -22,37 +22,31 @@ def format_text(request, language='ru'):
 
 
 def format_short(request, number):
-    category = categories.get(request[2], 'Неизвестная категория')
-    return f'{number}. {category} — {request[5]}'
+    return f"{number}. {categories.get(request[2], 'Неизвестная категория')} — {request[5]}"
 
 
 def format_requests_list(requests):
     text = '📋 Все заявки\n\n'
     for request in requests:
-        category = categories.get(request[2], 'Неизвестная категория')
-        text += f'№{request[0]}\nКатегория: {category}\nСтатус: {request[5]}\n\n'
+        text += f"№{request[0]}\nКатегория: {categories.get(request[2], 'Неизвестная категория')}\nСтатус: {request[5]}\n\n"
     return text
 
 
 def format_rejected_list(requests):
     text = '❌ Отклонённые заявки\n\n'
     for request in requests:
-        category = categories.get(request[2], 'Неизвестная категория')
-        text += f'№{request[0]}\nКатегория: {category}\nСтатус: {request[5]}\n\n'
+        text += f"№{request[0]}\nКатегория: {categories.get(request[2], 'Неизвестная категория')}\nСтатус: {request[5]}\n\n"
     return text
 
 
 def format_stats(stats):
-    total = sum(stats.values())
-    return (
-        '📊 Статистика заявок\n\n'
-        f"Всего заявок: {total}\n\n"
-        f"Новые: {stats.get('Новая', 0)}\n"
-        f"В работе: {stats.get('В работе', 0)}\n"
-        f"Завершены: {stats.get('Завершена', 0)}\n"
-        f"Отклонены: {stats.get('Отклонено', 0)}\n"
-        f"Отменены пользователями: {stats.get('Отменена', 0)}"
-    )
+    return ('📊 Статистика заявок\n\n'
+            f"Всего заявок: {sum(stats.values())}\n\n"
+            f"Новые: {stats.get('Новая', 0)}\n"
+            f"В работе: {stats.get('В работе', 0)}\n"
+            f"Завершены: {stats.get('Завершена', 0)}\n"
+            f"Отклонены: {stats.get('Отклонено', 0)}\n"
+            f"Отменены пользователями: {stats.get('Отменена', 0)}")
 
 
 def format_admin_stats(stats, rank, total_ranked):
@@ -62,10 +56,18 @@ def format_admin_stats(stats, rank, total_ranked):
         '📊 Моя статистика\n\n'
         f"Обработано сегодня: {stats['processed_today']}\n"
         f"Обработано всего: {stats['processed_total']}\n"
-        f"Сейчас в работе: {stats['active']}\n\n"
+        f"Сейчас в работе: {stats['active']}\n"
+        f"Отклонено: {stats['rejected']}\n\n"
         f"Средняя оценка: ⭐ {average}\n"
         f"Получено оценок: {stats['rating_count']}\n"
-        f"Место в рейтинге: #{rank_text}"
+        f"Место в рейтинге: #{rank_text}\n\n"
+        '🌐 Общая статистика\n\n'
+        f"Всего заявок: {stats['overall_total']}\n"
+        f"Новые: {stats['overall_new']}\n"
+        f"В работе: {stats['overall_active']}\n"
+        f"Завершены: {stats['overall_completed']}\n"
+        f"Отклонены: {stats['overall_rejected']}\n"
+        f"Отменены пользователями: {stats['overall_cancelled']}"
     )
 
 
@@ -76,9 +78,9 @@ def format_admin_ranking(rows):
     medals = ['🥇', '🥈', '🥉']
     for position, row in enumerate(rows, 1):
         _, name, avg_rating, rating_count, processed = row
-        medal = medals[position - 1] if position <= 3 else f'{position}.'
         if rating_count == 0:
             continue
+        medal = medals[position - 1] if position <= 3 else f'{position}.'
         lines.append(f'{medal} {name} — ⭐ {avg_rating:.2f} ({rating_count} оценок) — {processed} заявок')
     return '\n'.join(lines) if len(lines) > 2 else '🏆 Рейтинг администраторов\n\nПока нет оценок от пользователей.'
 
@@ -89,14 +91,11 @@ def format_find(request):
     admin_id = f'👤 {request[6]}' if request[6] else '⏳ Не назначен'
     reason = request[7] if request[7] else '—'
     file_type = request[8] if request[8] else '—'
-    return (
-        f'📋 <b>Заявка №{request[0]}</b>\n━━━━━━━━━━━━━━━━━━\n\n'
-        f'👤 <b>Пользователь</b>\n└ {request[1]}\n\n'
-        f'📂 <b>Категория</b>\n└ {category}\n\n'
-        f'📝 <b>Описание</b>\n└ {request[3]}\n\n'
-        f'📎 <b>Вложение</b>\n└ {file_id}\n└ Тип: {file_type}\n\n'
-        f'📊 <b>Статус</b>\n└ {request[5]}\n\n'
-        f'🛡 <b>Администратор</b>\n└ {admin_id}\n\n'
-        f'🚫 <b>Причина отказа</b>\n└ {reason}\n\n'
-        '━━━━━━━━━━━━━━━━━━\n'
-    )
+    return (f'📋 <b>Заявка №{request[0]}</b>\n━━━━━━━━━━━━━━━━━━\n\n'
+            f'👤 <b>Пользователь</b>\n└ {request[1]}\n\n'
+            f'📂 <b>Категория</b>\n└ {category}\n\n'
+            f'📝 <b>Описание</b>\n└ {request[3]}\n\n'
+            f'📎 <b>Вложение</b>\n└ {file_id}\n└ Тип: {file_type}\n\n'
+            f'📊 <b>Статус</b>\n└ {request[5]}\n\n'
+            f'🛡 <b>Администратор</b>\n└ {admin_id}\n\n'
+            f'🚫 <b>Причина отказа</b>\n└ {reason}\n\n━━━━━━━━━━━━━━━━━━\n')
