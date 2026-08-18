@@ -1,4 +1,5 @@
 import aiosqlite
+from config import SUPER_ADMIN_ID
 
 
 async def get_admin_stats(admin_id):
@@ -32,23 +33,43 @@ async def get_admin_stats(admin_id):
         }
 
 
-async def get_admin_ranking():
-    async with aiosqlite.connect('database.db') as conn:
+async def _get_ranking_rows(conn):
+    cursor = await conn.execute(
+        """
+        SELECT
+            a.admin_id,
+            a.admin_name,
+            COALESCE((SELECT AVG(r.rating) FROM ratings r WHERE r.admin_id = a.admin_id), 0) AS avg_rating,
+            (SELECT COUNT(*) FROM ratings r WHERE r.admin_id = a.admin_id) AS rating_count,
+            (SELECT COUNT(*) FROM requests req
+             WHERE req.admin_id = a.admin_id AND req.status = 'Завершена') AS processed
+        FROM admins a
+        WHERE EXISTS (SELECT 1 FROM ratings r WHERE r.admin_id = a.admin_id)
+        ORDER BY avg_rating DESC, rating_count DESC, processed DESC, a.admin_name COLLATE NOCASE ASC
+        """
+    )
+    rows = await cursor.fetchall()
+
+    if SUPER_ADMIN_ID not in {row[0] for row in rows}:
         cursor = await conn.execute(
             """
             SELECT
-                a.admin_id,
-                a.admin_name,
-                COALESCE((SELECT AVG(r.rating) FROM ratings r WHERE r.admin_id = a.admin_id), 0) AS avg_rating,
-                (SELECT COUNT(*) FROM ratings r WHERE r.admin_id = a.admin_id) AS rating_count,
-                (SELECT COUNT(*) FROM requests req
-                 WHERE req.admin_id = a.admin_id AND req.status = 'Завершена') AS processed
-            FROM admins a
-            WHERE EXISTS (SELECT 1 FROM ratings r WHERE r.admin_id = a.admin_id)
-            ORDER BY avg_rating DESC, rating_count DESC, processed DESC, a.admin_name COLLATE NOCASE ASC
-            """
+                COALESCE((SELECT AVG(rating) FROM ratings WHERE admin_id = ?), 0),
+                (SELECT COUNT(*) FROM ratings WHERE admin_id = ?),
+                (SELECT COUNT(*) FROM requests WHERE admin_id = ? AND status = 'Завершена')
+            """,
+            (SUPER_ADMIN_ID, SUPER_ADMIN_ID, SUPER_ADMIN_ID)
         )
-        return await cursor.fetchall()
+        avg_rating, rating_count, processed = await cursor.fetchone()
+        if rating_count:
+            rows.append((SUPER_ADMIN_ID, 'Супер-админ', avg_rating or 0, rating_count, processed or 0))
+
+    return sorted(rows, key=lambda row: (-row[2], -row[3], -row[4], row[1].lower()))
+
+
+async def get_admin_ranking():
+    async with aiosqlite.connect('database.db') as conn:
+        return await _get_ranking_rows(conn)
 
 
 async def get_admin_rank(admin_id):
