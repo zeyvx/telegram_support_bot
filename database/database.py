@@ -1,9 +1,14 @@
 import aiosqlite
 
 
-async def _add_column(conn, table, column, definition):
+async def add_column(conn, table, column, definition):
     cursor = await conn.execute(f"PRAGMA table_info({table})")
-    columns = {row[1] for row in await cursor.fetchall()}
+    rows = await cursor.fetchall()
+
+    columns = []
+    for row in rows:
+        columns.append(row[1])
+
     if column not in columns:
         await conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
@@ -58,9 +63,9 @@ async def init_db(conn):
     )
     """)
 
-    await _add_column(conn, 'users', 'language', "TEXT NOT NULL DEFAULT 'ru'")
-    await _add_column(conn, 'requests', 'created_at', 'TEXT')
-    await _add_column(conn, 'requests', 'completed_at', 'TEXT')
+    await add_column(conn, 'users', 'language', "TEXT NOT NULL DEFAULT 'ru'")
+    await add_column(conn, 'requests', 'created_at', 'TEXT')
+    await add_column(conn, 'requests', 'completed_at', 'TEXT')
 
     await conn.execute(
         "UPDATE requests SET created_at = COALESCE(created_at, datetime('now')) "
