@@ -93,7 +93,7 @@ telegram_support_bot/
 ```env
 BOT_TOKEN=токен_бота
 OPERATOR_PHONE=номер_оператора
-ADMIN_IDS=123456789,987654321
+SUPER_ADMIN_ID=123456789
 ```
 
 ## Установка
