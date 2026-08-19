@@ -120,10 +120,9 @@ async def my_works(callback: CallbackQuery):
         await callback.answer()
         return
     page_requests = my_requests[:5]
-    text = '\n'.join(
-        requests_utils.format_short(request, i + 1)
-        for i, request in enumerate(page_requests)
-    )
+    text = ''
+    for i, request in enumerate(page_requests):
+        text += requests_utils.format_short(request, i + 1) + '\n'
     try:
         await callback.message.edit_text(
             text=f'📂 Мои заявки в работе\n\n{text}',
@@ -219,8 +218,6 @@ async def add_admin(message: Message, command: CommandObject, state: FSMContext)
         await message.answer('Этот пользователь уже является администратором.')
         return
 
-    # The bot can reliably verify users who have already started the bot.
-    # This prevents arbitrary/nonexistent numeric IDs from entering the FSM.
     user = await users_dao.get_user(admin_id)
     if user is None:
         await message.answer(
@@ -253,17 +250,32 @@ async def add_admin(message: Message, command: CommandObject, state: FSMContext)
     )
 
 
-@router.callback_query(F.data.in_({'admin', 'senior_admin', 'moderator'}))
-async def select_admin_role(callback: CallbackQuery, state: FSMContext):
-    roles = {
-        'admin': 'Админ',
-        'senior_admin': 'Старший админ',
-        'moderator': 'Модератор'
-    }
-    role = roles.get(callback.data)
-    if role is None:
+@router.callback_query(F.data == 'admin')
+async def select_admin_role_admin(callback: CallbackQuery, state: FSMContext):
+    await select_admin_role(callback, state, 'Админ')
+
+
+@router.callback_query(F.data == 'senior_admin')
+async def select_admin_role_senior(callback: CallbackQuery, state: FSMContext):
+    await select_admin_role(callback, state, 'Старший админ')
+
+
+@router.callback_query(F.data == 'moderator')
+async def select_admin_role_moderator(callback: CallbackQuery, state: FSMContext):
+    await select_admin_role(callback, state, 'Модератор')
+
+
+async def select_admin_role(callback: CallbackQuery, state: FSMContext, role):
+    if callback.data == 'admin':
+        role = 'Админ'
+    elif callback.data == 'senior_admin':
+        role = 'Старший админ'
+    elif callback.data == 'moderator':
+        role = 'Модератор'
+    else:
         await callback.answer('Неизвестная роль.', show_alert=True)
         return
+
     await state.update_data(admin_role=callback.data)
     await state.set_state(AddAdmin.admin_name)
     await callback.message.edit_text(
@@ -283,19 +295,21 @@ async def admin_name(message: Message, state: FSMContext):
     data = await state.get_data()
     admin_id = data.get('admin_id')
     admin_role = data.get('admin_role')
-    priorities = {
-        'admin': ADMIN_PRIORITY,
-        'senior_admin': SENIOR_ADMIN_PRIORITY,
-        'moderator': MODERATOR_PRIORITY
-    }
-    priority = priorities.get(admin_role)
+
+    if admin_role == 'admin':
+        priority = ADMIN_PRIORITY
+    elif admin_role == 'senior_admin':
+        priority = SENIOR_ADMIN_PRIORITY
+    elif admin_role == 'moderator':
+        priority = MODERATOR_PRIORITY
+    else:
+        priority = None
 
     if not admin_id or not admin_role or priority is None:
         await message.answer('Не удалось получить данные администратора.')
         await state.clear()
         return
 
-    # Re-check before writing to DB in case the user was removed/changed during FSM.
     if await admins_dao.is_admin(admin_id):
         await message.answer('Этот пользователь уже является администратором.')
         await state.clear()
