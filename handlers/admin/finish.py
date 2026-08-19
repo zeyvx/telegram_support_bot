@@ -38,10 +38,12 @@ async def finish_request(callback: CallbackQuery):
         return
 
     language = await users_dao.get_language(request[1])
+    text = get_text(language, 'rating_prompt')
+    text = text.format(id=request_id)
 
     await callback.bot.send_message(
         request[1],
-        get_text(language, 'rating_prompt', id=request_id),
+        text,
         reply_markup=rating_keyboard(request_id)
     )
 
