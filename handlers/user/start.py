@@ -2,7 +2,8 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-import keyboards.user, keyboards.admin
+import keyboards.user
+import keyboards.admin
 from database.dao import users_dao, admins_dao
 from config import OPERATOR_PHONE
 from utils import chat_utils
@@ -13,10 +14,11 @@ router = Router()
 
 async def show_user_menu(message: Message):
     language = await users_dao.get_language(message.from_user.id)
+    text = get_text(language, 'main_menu')
     await chat_utils.show(
         message.bot,
         message.chat.id,
-        get_text(language, 'main_menu'),
+        text,
         keyboards.user.main_keyboard(language)
     )
 
@@ -27,7 +29,8 @@ async def start(message: Message, state: FSMContext):
 
     if await admins_dao.is_admin(message.from_user.id):
         await chat_utils.show(
-            message.bot, message.chat.id,
+            message.bot,
+            message.chat.id,
             "🛠 Панель администратора\n\n"
             "Здесь вы можете принимать заявки, работать с обращениями пользователей и просматривать статистику.\n\n"
             "Выберите нужный раздел:",
@@ -42,10 +45,12 @@ async def start(message: Message, state: FSMContext):
 @router.callback_query(F.data == 'language')
 async def language_menu(callback: CallbackQuery):
     language = await users_dao.get_language(callback.from_user.id)
+    text = get_text(language, 'choose_language')
+
     await chat_utils.show(
         callback.bot,
         callback.message.chat.id,
-        get_text(language, 'choose_language'),
+        text,
         keyboards.user.language_keyboard(language)
     )
     await callback.answer()
@@ -54,15 +59,18 @@ async def language_menu(callback: CallbackQuery):
 @router.callback_query(F.data.startswith('set_language:'))
 async def set_language(callback: CallbackQuery):
     language = callback.data.split(':', 1)[1]
-    if language not in {'ru', 'uz'}:
-        await callback.answer('Unknown language', show_alert=True)
+
+    if language != 'ru' and language != 'uz':
+        await callback.answer('Неизвестный язык', show_alert=True)
         return
 
     await users_dao.set_language(callback.from_user.id, language)
+
+    text = get_text(language, 'language_changed')
     await chat_utils.show(
         callback.bot,
         callback.message.chat.id,
-        get_text(language, 'language_changed'),
+        text,
         keyboards.user.main_keyboard(language)
     )
     await callback.answer()
@@ -71,10 +79,12 @@ async def set_language(callback: CallbackQuery):
 @router.callback_query(F.data == 'faq')
 async def faq(callback: CallbackQuery):
     language = await users_dao.get_language(callback.from_user.id)
+    text = get_text(language, 'faq_text')
+
     await chat_utils.show(
         callback.bot,
         callback.message.chat.id,
-        get_text(language, 'faq_text'),
+        text,
         keyboards.user.back_to_menu(language)
     )
     await callback.answer()
@@ -83,9 +93,13 @@ async def faq(callback: CallbackQuery):
 @router.callback_query(F.data == 'call_operator')
 async def operator(callback: CallbackQuery):
     language = await users_dao.get_language(callback.from_user.id)
+    text = get_text(language, 'operator')
+    text = text.format(phone=OPERATOR_PHONE)
+
     await chat_utils.show(
-        callback.bot, callback.message.chat.id,
-        get_text(language, 'operator', phone=OPERATOR_PHONE),
+        callback.bot,
+        callback.message.chat.id,
+        text,
         keyboards.user.back_to_menu(language)
     )
     await callback.answer()
