@@ -1,100 +1,105 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
-from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-import keyboards.user, keyboards.admin
-from database.dao import users_dao
-from config import OPERATOR_PHONE, ADMINS, NONE
-from states.registration import Registration
+import keyboards.user
+import keyboards.admin
+from database.dao import users_dao, admins_dao
+from config import OPERATOR_PHONE
 from utils import chat_utils
+from languages import get_text
 
 router = Router()
+
+
+async def show_user_menu(message: Message):
+    language = await users_dao.get_language(message.from_user.id)
+    text = get_text(language, 'main_menu')
+    await chat_utils.show(
+        message.bot,
+        message.chat.id,
+        text,
+        keyboards.user.main_keyboard(language)
+    )
+
 
 @router.message(CommandStart())
 async def start(message: Message, state: FSMContext):
     await state.clear()
 
-    if message.from_user.id in ADMINS:
+    if await admins_dao.is_admin(message.from_user.id):
         await chat_utils.show(
-            message.bot, message.chat.id,
-            "🛠 Добро пожаловать в панель администратора!\n\n"
-            "Здесь вы можете управлять заявками пользователей, просматривать обращения и отвечать на сообщения.\n\n"
-            "Выберите нужный раздел в меню ниже.",
+            message.bot,
+            message.chat.id,
+            "🛠 Панель администратора\n\n"
+            "Здесь вы можете принимать заявки, работать с обращениями пользователей и просматривать статистику.\n\n"
+            "Выберите нужный раздел:",
             keyboards.admin.start_menu()
         )
         return
 
-    user = await users_dao.get_user(message.from_user.id)
+    await users_dao.add_user(message.from_user.id)
+    await show_user_menu(message)
 
-    if user:
-        await chat_utils.show(
-            message.bot, message.chat.id,
-            "Добро пожаловать в главное меню!\n\n"
-            "Выберите нужное действие:",
-            keyboards.user.main_keyboard()
-        )
-        return
 
-    await state.set_state(Registration.waiting_contact)
+@router.callback_query(F.data == 'language')
+async def language_menu(callback: CallbackQuery):
+    language = await users_dao.get_language(callback.from_user.id)
+    text = get_text(language, 'choose_language')
+
     await chat_utils.show(
-        message.bot, message.chat.id,
-        "Здравствуйте! 👋\n\n"
-        "Добро пожаловать в службу поддержки.\n"
-        "Для начала работы отправьте свой контакт, нажав кнопку ниже.",
-        keyboards.user.send_contact()
+        callback.bot,
+        callback.message.chat.id,
+        text,
+        keyboards.user.language_keyboard(language)
     )
+    await callback.answer()
 
-@router.message(Registration.waiting_contact, F.contact)
-async def save_user(message: Message, state: FSMContext):
-    if message.contact.user_id != message.from_user.id:
-        await message.answer("Пожалуйста отправьте свой номер")
+
+@router.callback_query(F.data.startswith('set_language:'))
+async def set_language(callback: CallbackQuery):
+    language = callback.data.split(':', 1)[1]
+
+    if language != 'ru' and language != 'uz':
+        await callback.answer('Неизвестный язык', show_alert=True)
         return
 
-    phone = message.contact.phone_number
-    success = await users_dao.add_user(message.from_user.id, phone)
+    await users_dao.set_language(callback.from_user.id, language)
 
-    if not success:
-        await message.answer(
-            "⚠️ Этот номер телефона уже зарегистрирован в системе.\n"
-            "Если это ошибка — свяжитесь с оператором."
-        )
-        return
-
-    await state.clear()
-
-    await message.answer(
-        "✅ Вы успешно зарегистрированы!\n\n"
-        "Для начала работы перезапустите бота, отправив команду /start.",
-        reply_markup=ReplyKeyboardRemove()
+    text = get_text(language, 'language_changed')
+    await chat_utils.show(
+        callback.bot,
+        callback.message.chat.id,
+        text,
+        keyboards.user.main_keyboard(language)
     )
+    await callback.answer()
 
-@router.message(Registration.waiting_contact)
-async def invalid_contact(message: Message):
-    await message.answer(
-        "Пожалуйста, отправьте контакт для регистрации",
-        reply_markup=keyboards.user.send_contact()
-    )
 
 @router.callback_query(F.data == 'faq')
 async def faq(callback: CallbackQuery):
-    text = (
-        "❓ Часто задаваемые вопросы\n\n"
-        "Как отправить заявку?\n"
-        "Нажмите «Отправить заявку», выберите категорию и опишите проблему.\n\n"
-        "Как узнать статус заявки?\n"
-        "Откройте «Мои заявки» — там видно статус и ответ, если он есть.\n\n"
-        "Сколько ждать ответа?\n"
-        "Обычно до 24 часов.\n\n"
-        "Не нашли ответ? Свяжитесь с оператором."
+    language = await users_dao.get_language(callback.from_user.id)
+    text = get_text(language, 'faq_text')
+
+    await chat_utils.show(
+        callback.bot,
+        callback.message.chat.id,
+        text,
+        keyboards.user.back_to_menu(language)
     )
-    await chat_utils.show(callback.bot, callback.message.chat.id, text, keyboards.user.back_to_menu())
     await callback.answer()
+
 
 @router.callback_query(F.data == 'call_operator')
 async def operator(callback: CallbackQuery):
+    language = await users_dao.get_language(callback.from_user.id)
+    text = get_text(language, 'operator')
+    text = text.format(phone=OPERATOR_PHONE)
+
     await chat_utils.show(
-        callback.bot, callback.message.chat.id,
-        f"Номер оператора: {OPERATOR_PHONE}",
-        keyboards.user.back_to_menu()
+        callback.bot,
+        callback.message.chat.id,
+        text,
+        keyboards.user.back_to_menu(language)
     )
     await callback.answer()
