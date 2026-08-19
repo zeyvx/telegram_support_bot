@@ -27,7 +27,30 @@ async def get_admin_stats(admin_id):
         rejected = (await cursor.fetchone())[0]
 
         cursor = await conn.execute("SELECT status, COUNT(*) FROM requests GROUP BY status")
-        overall = dict(await cursor.fetchall())
+        rows = await cursor.fetchall()
+
+    overall_total = 0
+    overall_new = 0
+    overall_active = 0
+    overall_completed = 0
+    overall_rejected = 0
+    overall_cancelled = 0
+
+    for row in rows:
+        status = row[0]
+        count = row[1]
+        overall_total += count
+
+        if status == 'Новая':
+            overall_new = count
+        elif status == 'В работе':
+            overall_active = count
+        elif status == 'Завершена':
+            overall_completed = count
+        elif status == 'Отклонено':
+            overall_rejected = count
+        elif status == 'Отменена':
+            overall_cancelled = count
 
     return {
         'processed_total': processed_total or 0,
@@ -36,12 +59,12 @@ async def get_admin_stats(admin_id):
         'rejected': rejected or 0,
         'rating_count': rating_count or 0,
         'average_rating': average_rating or 0,
-        'overall_total': sum(overall.values()),
-        'overall_new': overall.get('Новая', 0),
-        'overall_active': overall.get('В работе', 0),
-        'overall_completed': overall.get('Завершена', 0),
-        'overall_rejected': overall.get('Отклонено', 0),
-        'overall_cancelled': overall.get('Отменена', 0),
+        'overall_total': overall_total,
+        'overall_new': overall_new,
+        'overall_active': overall_active,
+        'overall_completed': overall_completed,
+        'overall_rejected': overall_rejected,
+        'overall_cancelled': overall_cancelled,
     }
 
 
@@ -56,8 +79,7 @@ async def get_admin_ranking():
                 (SELECT COUNT(*) FROM ratings r WHERE r.admin_id = a.admin_id),
                 (SELECT COUNT(*) FROM requests req WHERE req.admin_id = a.admin_id AND req.status = 'Завершена')
             FROM admins a
-            ORDER BY CASE WHEN 4 > 0 THEN 0 ELSE 1 END,
-                     3 DESC, 4 DESC, 5 DESC, a.admin_name COLLATE NOCASE ASC
+            ORDER BY 3 DESC, 4 DESC, 5 DESC, a.admin_name COLLATE NOCASE ASC
             """
         )
         rows = await cursor.fetchall()
@@ -66,8 +88,17 @@ async def get_admin_ranking():
 
 
 async def get_admin_rank(admin_id):
-    rows = [row for row in await get_admin_ranking() if row[3] > 0]
-    for position, row in enumerate(rows, 1):
+    rows = await get_admin_ranking()
+
+    ranked = []
+    for row in rows:
+        if row[3] > 0:
+            ranked.append(row)
+
+    position = 1
+    for row in ranked:
         if row[0] == admin_id:
-            return position, len(rows)
-    return None, len(rows)
+            return position, len(ranked)
+        position += 1
+
+    return None, len(ranked)
