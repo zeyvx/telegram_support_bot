@@ -28,6 +28,7 @@ def language_keyboard(language='ru'):
 
 def problems_keyboard(language='ru'):
     categories = get_text(language, 'categories')
+
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text=categories['tech'], callback_data='problem_tech'),
@@ -56,24 +57,55 @@ def back_to_menu(language='ru'):
 
 def request_navigation(current, total, request_id, status, language='ru'):
     buttons = []
+
     if current > 0:
-        buttons.append(InlineKeyboardButton(text=get_text(language, 'prev'), callback_data=f'request_page:{current - 1}'))
+        buttons.append(
+            InlineKeyboardButton(
+                text=get_text(language, 'prev'),
+                callback_data=f'request_page:{current - 1}'
+            )
+        )
+
     if current < total - 1:
-        buttons.append(InlineKeyboardButton(text=get_text(language, 'next'), callback_data=f'request_page:{current + 1}'))
-    buttons.append(InlineKeyboardButton(text=get_text(language, 'back'), callback_data='back_to_menu'))
+        buttons.append(
+            InlineKeyboardButton(
+                text=get_text(language, 'next'),
+                callback_data=f'request_page:{current + 1}'
+            )
+        )
+
+    buttons.append(
+        InlineKeyboardButton(
+            text=get_text(language, 'back'),
+            callback_data='back_to_menu'
+        )
+    )
 
     keyboard = [buttons]
+
     if status == 'Новая':
         keyboard.append([
-            InlineKeyboardButton(text=get_text(language, 'cancel'), callback_data=f'cancel_own_request:{request_id}')
+            InlineKeyboardButton(
+                text=get_text(language, 'cancel'),
+                callback_data=f'cancel_own_request:{request_id}'
+            )
         ])
+
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def rating_keyboard(request_id):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f'⭐ {i}', callback_data=f'rate:{request_id}:{i}') for i in range(1, 6)]
-    ])
+    buttons = []
+
+    for i in range(1, 6):
+        buttons.append(
+            InlineKeyboardButton(
+                text=f'⭐ {i}',
+                callback_data=f'rate:{request_id}:{i}'
+            )
+        )
+
+    return InlineKeyboardMarkup(inline_keyboard=[buttons])
 
 
 def send_contact():
