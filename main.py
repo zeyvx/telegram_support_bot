@@ -28,18 +28,14 @@ async def main():
         await init_db(db)
 
     if not BOT_TOKEN:
-        raise RuntimeError('BOT_TOKEN is not configured')
+        print('BOT_TOKEN не указан в .env')
+        return
 
     bot = Bot(token=BOT_TOKEN)
     print('Бот запустился...')
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+
+    await dp.start_polling(bot)
 
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print('Бот отключён')
+    asyncio.run(main())
