@@ -1,6 +1,6 @@
 import aiosqlite
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 async def add_user(user_id):
@@ -27,11 +27,18 @@ async def get_user(user_id):
 
 async def get_language(user_id):
     user = await get_user(user_id)
-    return user[1] if user and user[1] in {'ru', 'uz'} else 'ru'
+
+    if user is None:
+        return 'ru'
+
+    if user[1] == 'ru' or user[1] == 'uz':
+        return user[1]
+
+    return 'ru'
 
 
 async def set_language(user_id, language):
-    if language not in {'ru', 'uz'}:
+    if language != 'ru' and language != 'uz':
         return False
 
     async with aiosqlite.connect('database.db') as conn:
@@ -45,7 +52,8 @@ async def set_language(user_id, language):
 
 
 async def add_request(user_id, category, request, file_id, file_type=None):
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = datetime.now().isoformat()
+
     async with aiosqlite.connect('database.db') as conn:
         await conn.execute(
             "INSERT INTO requests "
