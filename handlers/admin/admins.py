@@ -252,34 +252,32 @@ async def add_admin(message: Message, command: CommandObject, state: FSMContext)
 
 @router.callback_query(F.data == 'admin')
 async def select_admin_role_admin(callback: CallbackQuery, state: FSMContext):
-    await select_admin_role(callback, state, 'Админ')
+    await state.update_data(admin_role='admin')
+    await state.set_state(AddAdmin.admin_name)
+    await callback.message.edit_text(
+        'Выбрана роль: Админ\n\n'
+        'Теперь введите имя администратора:'
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == 'senior_admin')
 async def select_admin_role_senior(callback: CallbackQuery, state: FSMContext):
-    await select_admin_role(callback, state, 'Старший админ')
+    await state.update_data(admin_role='senior_admin')
+    await state.set_state(AddAdmin.admin_name)
+    await callback.message.edit_text(
+        'Выбрана роль: Старший админ\n\n'
+        'Теперь введите имя администратора:'
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == 'moderator')
 async def select_admin_role_moderator(callback: CallbackQuery, state: FSMContext):
-    await select_admin_role(callback, state, 'Модератор')
-
-
-async def select_admin_role(callback: CallbackQuery, state: FSMContext, role):
-    if callback.data == 'admin':
-        role = 'Админ'
-    elif callback.data == 'senior_admin':
-        role = 'Старший админ'
-    elif callback.data == 'moderator':
-        role = 'Модератор'
-    else:
-        await callback.answer('Неизвестная роль.', show_alert=True)
-        return
-
-    await state.update_data(admin_role=callback.data)
+    await state.update_data(admin_role='moderator')
     await state.set_state(AddAdmin.admin_name)
     await callback.message.edit_text(
-        f'Выбрана роль: {role}\n\n'
+        'Выбрана роль: Модератор\n\n'
         'Теперь введите имя администратора:'
     )
     await callback.answer()
