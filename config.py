@@ -11,11 +11,11 @@ SENIOR_ADMIN_PRIORITY = 2
 MODERATOR_PRIORITY = 3
 SUPER_ADMIN_PRIORITY = 4
 
-_raw_super_admin_id = getenv('SUPER_ADMIN_ID')
-if not _raw_super_admin_id:
-    raise RuntimeError('SUPER_ADMIN_ID is not configured')
+SUPER_ADMIN_ID = 0
+super_admin_id = getenv('SUPER_ADMIN_ID')
 
-try:
-    SUPER_ADMIN_ID = int(_raw_super_admin_id)
-except ValueError as exc:
-    raise RuntimeError('SUPER_ADMIN_ID must be an integer') from exc
+if super_admin_id:
+    try:
+        SUPER_ADMIN_ID = int(super_admin_id)
+    except ValueError:
+        print('SUPER_ADMIN_ID должен быть числом')
